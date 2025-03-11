@@ -6,6 +6,22 @@
 
 A short description of the project.
 
+## Abstract
+
+Intensive care patients, usually being severely ill, are closely monitored by state of the art
+medical devices and sensors to measure vital signs at regular intervals. Additionally, doctors
+take frequent laboratory tests and any type of treatment administered via infusion, injection,
+or oxygen supplied through various ventilation equipment, are all meticulously recorded.
+
+These large amounts of data can be overwhelming for intensive care physicians to analyze
+properly while under time pressure. Machine learning algorithms are prime candidates to
+leverage these large amounts of data and distill them into actionable outputs for clinical
+decision support.
+
+The goal of this project is to get familiar with such a promising type of healthcare data, while
+at the same time learning how to tackle the challenges of working on noisy, multi-variate,
+irregularly-sampled and sparse, and confounded real world data.
+
 ## Project Organization
 
 ```
@@ -26,7 +42,7 @@ A short description of the project.
 │                         the creator's initials, and a short `-` delimited description, e.g.
 │                         `1.0-jqp-initial-data-exploration`.
 │
-├── pyproject.toml     <- Project configuration file with package metadata for 
+├── pyproject.toml     <- Project configuration file with package metadata for
 │                         project_1 and configuration for tools like black
 │
 ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
@@ -49,13 +65,12 @@ A short description of the project.
     │
     ├── features.py             <- Code to create features for modeling
     │
-    ├── modeling                
-    │   ├── __init__.py 
-    │   ├── predict.py          <- Code to run model inference with trained models          
+    ├── modeling
+    │   ├── __init__.py
+    │   ├── predict.py          <- Code to run model inference with trained models
     │   └── train.py            <- Code to train models
     │
     └── plots.py                <- Code to create visualizations
 ```
 
---------
-
+---
