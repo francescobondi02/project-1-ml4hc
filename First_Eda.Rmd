@@ -1,0 +1,220 @@
+---
+title: "First EDA"
+author: "Saverio Fontana"
+date: "2025-03-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Loading necessary libraries
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(DataExplorer)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r loading data}
+# Read the Parquet file and load the data
+data <- read_parquet("data/processed/set_a.parquet")
+data$Time <- as.POSIXct(data$Time, tz = "UTC")  # Set time zone explicitly
+
+# Check the first few timestamps
+head(data$Time)  # Output should show the exact timestamps, e.g., "2025-03-10 01:00:00 UTC"
+
+# Visualizing missing data
+plot_missing(data)
+```
+## Initial Data Exploration
+
+```{r}
+# Check the dimensions of the dataset
+dim(data)
+
+# Check the column names
+colnames(data)
+
+# Summary statistics for numeric columns
+summary(data)
+
+
+
+# Histograms for numeric variables (ignoring NAs)
+data %>%
+  select(where(is.numeric)) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
+  ggplot(aes(value)) +
+  geom_histogram(bins = 30, na.rm = TRUE) +
+  facet_wrap(~ variable, scales = "free") +
+  labs(title = "Distributions of Numeric Variables (Ignoring NAs)")
+```
+
+### Variable Explanation and Notes
+
+#### Variable Descriptions (general descriptors and time series)
+
+"These six descriptors are collected at the time the patient is admitted to the ICU. 
+Their associated time-stamps are 00:00 (thus they appear at the beginning of each 
+patient's record)."
+
+- **RecordID**: A unique integer for each ICU stay
+- **Age**: Age in years
+- **Gender**: Gender (0: female, 1: male)
+- **Height**: Height in cm
+- **ICUType**: ICU type (1: Coronary Care Unit, 2: Cardiac Surgery Recovery Unit, 3: Medical ICU, or 4: Surgical ICU)
+- **Weight**: Weight in kg
+
+"NB: All valid values for general descriptors, time series variables, and outcome-related 
+descriptors are non-negative (≥ 0). A value of -1 indicates missing or unknown data."
+
+
+
+```{r}
+#So first of all we set the -1 in columns "Age", "Gender", "Height", ICUType, Weight to NA
+# Replace -1 with NA for Height, Age, and Weight
+data <- data %>%
+  mutate(
+    Height = ifelse(Height == -1, NA, Height),
+    Age = ifelse(Age == -1, NA, Age),
+    Weight = ifelse(Weight == -1, NA, Weight),
+    ICUType = ifelse(ICUType == -1, NA, ICUType),
+    Gender = ifelse(Gender ==-1, NA, Gender)
+  )
+
+
+#So when we will use algoritms that need to remove the NAs? What will we do? 
+#I mean we could even do imputation actually (Weight can be predicted by age and Height for ex)
+```
+
+
+###Handling missing data in static variables
+```{r}
+# Static data: Keep the first row for each patient for simplicity in the next EDA
+#and inspect for missing values
+data_static <- data %>% group_by(RecordID) %>% slice(1)
+
+# Frequency table for categorical variables (Gender, ICUType)
+table(data_static$Gender, useNA = "ifany") 
+table(data_static$ICUType, useNA = "ifany")
+
+# Bar plots for categorical variables (Gender and ICUType)
+data_static %>%
+  ggplot(aes(x = factor(Gender))) +
+  geom_bar() +
+  labs(title = "Gender Distribution")
+
+data_static %>%
+  ggplot(aes(x = factor(ICUType))) +
+  geom_bar() +
+  labs(title = "ICU Type Distribution (Excluding NAs)")
+
+```
+
+
+
+
+### Exploring Continuous Static Variables (Height, Weight, Age)
+
+```{r}
+# Distribution for Height
+data_static %>%
+  filter(!is.na(Height)) %>%
+  ggplot(aes(x = Height)) +
+  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") + 
+  labs(title = "Distribution of Height", x = "Height", y = "Count")
+
+
+# Density plot for Height
+data_static %>%
+  filter(!is.na(Height)) %>%
+  ggplot(aes(x = Height)) +
+  geom_density(fill = "skyblue", alpha = 0.5) +  
+  labs(title = "Density Plot of Height", x = "Height", y = "Density")
+
+# Inspect unusually low or high Height values
+outlier_data <- data_static %>%
+  filter((Height < 100 | Height > 300) & Height != -1) %>%
+  select(RecordID, Age, Height, Weight)
+
+#upon inspection I'd suggest to set their values of Height to NA
+
+# Extract the RecordID from the filtered data
+outlier_ids <- outlier_data$RecordID
+
+# Set Height to NA for the identified records in the original data
+data_clean <- data %>%
+  mutate(Height = ifelse(RecordID %in% outlier_ids, NA, Height))
+
+# Distribution for Weight
+data_static %>%
+  filter(Weight != -1) %>%
+  ggplot(aes(x = Weight)) +
+  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") + 
+  labs(title = "Distribution of Weight", x = "Weight", y = "Count")
+
+# Distribution for Age (NB, no values over 90, so maybe data are right truncated)
+data_static %>%
+  filter(Age != -1) %>%
+  ggplot(aes(x = Age)) +
+  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") + 
+  labs(title = "Distribution of Age", x = "Age", y = "Count")
+
+# Smooth density plot for Weight
+data_static %>%
+  filter(Weight != -1) %>%
+  ggplot(aes(x = Weight)) +
+  geom_density(fill = "skyblue", alpha = 0.5) +  
+  labs(title = "Density Plot of Weight", x = "Weight", y = "Density")
+
+# Smooth density plot for Age
+data_static %>%
+  filter(Age != -1) %>%
+  ggplot(aes(x = Age)) +
+  geom_density(fill = "skyblue", alpha = 0.5) +  
+  labs(title = "Density Plot of Age", x = "Age", y = "Density")
+
+###########
+# Inspecting Extreme Weight Values
+###########
+
+# Inspect unusually low or high Weight values
+data_static %>%
+  filter((Weight < 30 | Weight > 300) & Weight != -1) %>%  
+  select(RecordID, Age, Height, Weight)
+# Don't know actually, maybe it's an ok value honestly
+
+
+#put also the summaries in the output
+```
+## Boxplot for Age by ICUType
+
+```{r}
+data_static %>%
+  filter(Age != -1) %>%
+  ggplot(aes(x = factor(ICUType), y = Age, fill = factor(ICUType))) +
+  geom_boxplot() +
+  labs(title = "Age by ICU Type", x = "ICU Type", y = "Age") +
+  theme_minimal()
+
+# Boxplot for Weight by ICUType
+data_static %>%
+  filter(Weight != -1) %>%
+  ggplot(aes(x = factor(ICUType), y = Weight, fill = factor(ICUType))) +
+  geom_boxplot() +
+  labs(title = "Weight by ICU Type", x = "ICU Type", y = "Weight") +
+  theme_minimal()
+
+# Boxplot for Height by ICUType
+data_static %>%
+  filter(Height != -1) %>%
+  ggplot(aes(x = factor(ICUType), y = Height, fill = factor(ICUType))) +
+  geom_boxplot() +
+  labs(title = "Height by ICU Type", x = "ICU Type", y = "Height") +
+  theme_minimal()
+```
+
+NOTE, I also tried to do some anova to see if the difference between ICU class is signficant. 
+I get non signficant results for everything exept for Age, but then since the Age distribution is soo far from a Normal the results are not reliable.
