@@ -18,6 +18,7 @@ EXTERNAL_DATA_DIR = DATA_DIR / "external"
 
 # Added
 DATA_DIRECTORY = PROJ_ROOT / "data/data_1/predicting-mortality-of-icu-patients-the-physionet-computing-in-cardiology-challenge-2012-1.0.0"
+LOGS_DIR = PROJ_ROOT / "data/logs"
 
 MODELS_DIR = PROJ_ROOT / "models"
 

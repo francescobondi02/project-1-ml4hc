@@ -8,21 +8,9 @@ from datetime import datetime, timedelta
 from tqdm import tqdm
 from pathlib import Path
 
+from project_1.config import PROJ_ROOT, DATA_DIRECTORY, PROCESSED_DATA_DIR, LOGS_DIR
+
 tqdm.pandas()
-
-#########################################################################################################################
-# Path Configuration
-#########################################################################################################################
-
-PROJ_ROOT = Path(__file__).resolve().parents[1]
-
-DATA_DIR = PROJ_ROOT / "data"
-RAW_DATA_DIR = DATA_DIR / "raw"
-PROCESSED_DATA_DIR = DATA_DIR / "processed"
-
-# Added
-DATA_DIRECTORY = PROJ_ROOT / "data/data_1/predicting-mortality-of-icu-patients-the-physionet-computing-in-cardiology-challenge-2012-1.0.0"
-MODELS_DIR = PROJ_ROOT / "models"
 
 #########################################################################################################################
 # Data Loading
@@ -118,3 +106,21 @@ for set_name, set_df in tqdm(sets_dict.items(), desc="Storing DataFrames", unit=
     print(f"Saved {output_path}")
 
 print("\nAll DataFrames have been saved to Parquet format.")
+
+##########################################################################################
+# Write Log File with DataFrame Info
+##########################################################################################
+
+log_file_path = LOGS_DIR / "Q1_1_data-transform.log"
+
+with open(log_file_path, "w") as log_file:
+    log_file.write("Data Transform Log\n")
+    log_file.write("===================\n\n")
+    for set_name, set_df in sets_dict.items():
+        log_file.write(f"{set_name}:\n")
+        log_file.write(f"  Shape: {set_df.shape}\n")
+        log_file.write(f"  Columns: {', '.join(set_df.columns)}\n")
+        # Optional: You can include additional information here, such as missing values per column.
+        log_file.write("\n")
+
+print(f"Log file saved to {log_file_path}")
