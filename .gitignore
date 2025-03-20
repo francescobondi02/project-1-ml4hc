@@ -184,9 +184,6 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-<<<<<<< HEAD
 .Rproj.user
-=======
 
 .vscode/
->>>>>>> main
