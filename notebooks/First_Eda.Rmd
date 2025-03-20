@@ -16,8 +16,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-
 ```{r loading data}
+setwd("..")
+getwd()
 # Read the Parquet file and load the data
 data <- read_parquet("data/processed/set_a.parquet")
 data$Time <- as.POSIXct(data$Time, tz = "UTC")  # Set time zone explicitly
@@ -473,7 +474,12 @@ hist(data$WBC) #left skewed
 Save data back 
 ```{r}
 # Save the cleaned data back to a Parquet file
+getwd()
+setwd("..")
 write_parquet(data, "data/processed/set_a_cleaned.parquet")
 ```
 
 
+These plots are from the data w/o forward fill to inspect the pure variables and their NAs. 
+By visual and summary inspection many outliers are present. We handled some of them (lista di quello che abbiamo fatto), but for the handling of other extreme value a depp medical knowledge would be necessary, especially cause ICU patients can have values way more extreme than a normal patient. 
+By visual insp
