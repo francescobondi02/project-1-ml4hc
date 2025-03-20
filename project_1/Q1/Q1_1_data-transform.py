@@ -102,7 +102,7 @@ print(sets_dict["set_a"].head())
 
 for set_name, set_df in tqdm(sets_dict.items(), desc="Storing DataFrames", unit="set"):
     output_path = PROCESSED_DATA_DIR / f"{set_name}.parquet"
-    set_df.to_parquet(output_path, index=False)
+    set_df.to_parquet(output_path, index=False, engine = "pyarrow")
     print(f"Saved {output_path}")
 
 print("\nAll DataFrames have been saved to Parquet format.")

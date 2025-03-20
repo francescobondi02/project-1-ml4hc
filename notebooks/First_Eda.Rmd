@@ -1,0 +1,483 @@
+---
+title: "First EDA + Data Cleaning"
+author: "Saverio Fontana"
+date: "2025-03-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Loading necessary libraries
+library(arrow)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(DataExplorer)
+library(here)
+
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = here::here())
+
+```
+
+
+```{r loading data}
+getwd()
+# Read the Parquet file and load the data
+data <- read_parquet("data/processed/set_a.parquet")
+data$Time <- as.POSIXct(data$Time, tz = "UTC")  # Set time zone explicitly
+
+# Check the first few timestamps
+head(data$Time)  # Output should show the exact timestamps, e.g., "2025-03-10 01:00:00 UTC"
+
+# Visualizing missing data
+plot_missing(data)
+```
+## Initial Data Exploration
+
+```{r}
+# Check the dimensions of the dataset
+dim(data)
+
+# Check the column names
+colnames(data)
+
+# Summary statistics for numeric columns
+summary(data)
+
+
+
+# Histograms for numeric variables (ignoring NAs)
+data %>%
+  select(where(is.numeric)) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
+  ggplot(aes(value)) +
+  geom_histogram(bins = 30, na.rm = TRUE) +
+  facet_wrap(~ variable, scales = "free") +
+  labs(title = "Distributions of Numeric Variables (Ignoring NAs)")
+```
+
+### Variable Explanation and Notes
+
+#### Variable Descriptions (general descriptors and time series)
+
+"These six descriptors are collected at the time the patient is admitted to the ICU. 
+Their associated time-stamps are 00:00 (thus they appear at the beginning of each 
+patient's record)."
+
+- **RecordID**: A unique integer for each ICU stay
+- **Age**: Age in years
+- **Gender**: Gender (0: female, 1: male)
+- **Height**: Height in cm
+- **ICUType**: ICU type (1: Coronary Care Unit, 2: Cardiac Surgery Recovery Unit, 3: Medical ICU, or 4: Surgical ICU)
+- **Weight**: Weight in kg
+
+"NB: All valid values for general descriptors, time series variables, and outcome-related 
+descriptors are non-negative (≥ 0). A value of -1 indicates missing or unknown data."
+
+
+
+```{r}
+#So first of all we set the -1 in columns "Age", "Gender", "Height", ICUType, Weight to NA
+# Replace -1 with NA for Height, Age, and Weight
+data <- data %>%
+  mutate(
+    Height = ifelse(Height == -1, NA, Height),
+    Age = ifelse(Age == -1, NA, Age),
+    Weight = ifelse(Weight == -1, NA, Weight),
+    ICUType = ifelse(ICUType == -1, NA, ICUType),
+    Gender = ifelse(Gender ==-1, NA, Gender)
+  )
+
+
+#So when we will use algoritms that need to remove the NAs? What will we do? 
+#I mean we could even do imputation actually (Weight can be predicted by age and Height for ex)
+```
+
+
+###Handling missing data in static variables
+```{r}
+# Static data: Keep the first row for each patient for simplicity in the next EDA
+#and inspect for missing values
+data_static <- data %>% group_by(RecordID) %>% slice(1)
+
+# Frequency table for categorical variables (Gender, ICUType)
+table(data_static$Gender, useNA = "ifany") 
+table(data_static$ICUType, useNA = "ifany")
+
+# Bar plots for categorical variables (Gender and ICUType)
+data_static %>%
+  ggplot(aes(x = factor(Gender))) +
+  geom_bar() +
+  labs(title = "Gender Distribution")
+
+data_static %>%
+  ggplot(aes(x = factor(ICUType))) +
+  geom_bar() +
+  labs(title = "ICU Type Distribution (Excluding NAs)")
+
+```
+
+
+
+
+### Exploring Continuous Static Variables (Height, Weight, Age)
+
+```{r}
+# Distribution for Height
+data_static %>%
+  filter(!is.na(Height)) %>%
+  ggplot(aes(x = Height)) +
+  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") + 
+  labs(title = "Distribution of Height", x = "Height", y = "Count")
+
+
+# Density plot for Height
+data_static %>%
+  filter(!is.na(Height)) %>%
+  ggplot(aes(x = Height)) +
+  geom_density(fill = "skyblue", alpha = 0.5) +  
+  labs(title = "Density Plot of Height", x = "Height", y = "Density")
+
+# Inspect unusually low or high Height values
+outlier_data <- data_static %>%
+  filter((Height < 100 | Height > 300) & Height != -1) %>%
+  select(RecordID, Age, Height, Weight)
+
+#upon inspection I'd suggest to set their values of Height to NA (maybe 1.8 for example can mean 180 cm but since we are not sure it's better to be conservative)
+
+# Extract the RecordID from the filtered data
+outlier_ids <- outlier_data$RecordID
+
+# Set Height to NA for the identified records in the original data
+data_clean <- data %>%
+  mutate(Height = ifelse(RecordID %in% outlier_ids, NA, Height))
+
+# Distribution for Weight
+data_static %>%
+  filter(Weight != -1) %>%
+  ggplot(aes(x = Weight)) +
+  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") + 
+  labs(title = "Distribution of Weight", x = "Weight", y = "Count")
+
+# Distribution for Age (NB, no values over 90, so maybe data are right truncated)
+data_static %>%
+  filter(Age != -1) %>%
+  ggplot(aes(x = Age)) +
+  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") + 
+  labs(title = "Distribution of Age", x = "Age", y = "Count")
+
+# Smooth density plot for Weight
+data_static %>%
+  filter(Weight != -1) %>%
+  ggplot(aes(x = Weight)) +
+  geom_density(fill = "skyblue", alpha = 0.5) +  
+  labs(title = "Density Plot of Weight", x = "Weight", y = "Density")
+
+# Smooth density plot for Age
+data_static %>%
+  filter(Age != -1) %>%
+  ggplot(aes(x = Age)) +
+  geom_density(fill = "skyblue", alpha = 0.5) +  
+  labs(title = "Density Plot of Age", x = "Age", y = "Density")
+
+###########
+# Inspecting Extreme Weight Values
+###########
+
+# Inspect unusually low or high Weight values
+data_static %>%
+  filter((Weight < 30 | Weight > 300) & Weight != -1) %>%  
+  select(RecordID, Age, Height, Weight)
+# Don't know actually, maybe it's an ok value honestly
+
+
+#put also the summaries in the output
+```
+## Boxplot for Age by ICUType
+
+```{r}
+data_static %>%
+  filter(Age != -1) %>%
+  ggplot(aes(x = factor(ICUType), y = Age, fill = factor(ICUType))) +
+  geom_boxplot() +
+  labs(title = "Age by ICU Type", x = "ICU Type", y = "Age") +
+  theme_minimal()
+
+# Boxplot for Weight by ICUType
+data_static %>%
+  filter(Weight != -1) %>%
+  ggplot(aes(x = factor(ICUType), y = Weight, fill = factor(ICUType))) +
+  geom_boxplot() +
+  labs(title = "Weight by ICU Type", x = "ICU Type", y = "Weight") +
+  theme_minimal()
+
+# Boxplot for Height by ICUType
+data_static %>%
+  filter(Height != -1) %>%
+  ggplot(aes(x = factor(ICUType), y = Height, fill = factor(ICUType))) +
+  geom_boxplot() +
+  labs(title = "Height by ICU Type", x = "ICU Type", y = "Height") +
+  theme_minimal()
+```
+
+NOTE, I also tried to do some anova to see if the difference between ICU class is signficant. 
+<!-- I get non signficant results for everything exept for Age, but then since the Age distribution is soo far from a Normal the results are not reliable. -->
+
+
+
+
+### Exploring Time changing variables
+
+```{r}
+
+
+```
+```{r}
+
+#Variables handling 
+
+summary(data$Albumin) #(g/dL)
+hist(data$Albumin)
+"Albumin ok
+bell shaped"
+
+summary(data$ALP) #(IU/L)]
+hist(data$ALP) #left skewed
+#usually max range is around 150.
+#Maybe should remove over 1000, Sticazzi
+
+
+summary(data$ALT) #(IU/L)]
+hist(data$ALT) #left skewed
+#maybe should remove over 3000, sticazzi
+
+
+summary(data$AST) #(IU/L)]
+hist(data$AST) #left skewed
+##maybe should remove over 3000, sticazzi
+
+summary(data$Bilirubin) #(mg/dL)
+hist(data$Bilirubin) #left skewed
+
+
+summary(data$BUN) #(mg/dL)
+hist(data$BUN) #left skewed
+#GOOD VALUES
+
+
+summary(data$Cholesterol) #(mg/dL)
+hist(data$Cholesterol) #bell shaped
+#okish values
+
+
+summary(data$Creatinine) #(mg/dL)
+hist(data$Creatinine) #left skewed
+#okish 
+
+
+summary(data$DiasABP) #(mmHg)
+hist(data$DiasABP) #normali-ish
+"Set to NaN if < 1	Unrealistic diastolic pressure
+Set to NaN if > 200	Very high diastolic pressure, likely error"
+
+summary(data$FiO2) #(0-1)
+hist(data$FiO2) #impossible to define 
+
+
+summary(data$GCS) #Glasgow Coma Scale (3-15) 
+hist(data$GCS) #right skewed, makes sense, they are in coma ahahha
+
+summary(data$Glucose) #(mg/dL)
+hist(data$Glucose) #a bit normal (left skewed)
+
+#find the columns RecordID with values over 1000
+high_glucose_records <- data %>%
+  filter(Glucose > 1000)
+
+# Display the RecordID(s) with Glucose > 1000
+IDs <- high_glucose_records$RecordID
+
+#LET'S INSPECT One of them 
+Unusual_patient <- data[data$RecordID == IDs[1], ]
+Unusual_patient$Glucose
+#An incredible drop in one hour. Don't know wheter we should cancel the over 1000
+
+
+
+summary(data$HCO3) #(mmol/L)
+hist(data$HCO3) #normal-ish
+
+
+summary(data$HCT) #(%)
+hist(data$HCT) #normal-ish
+
+summary(data$HR) #(bpm)
+hist(data$HR) #normal-ish
+#There are some zeros, inspect:
+high_HR_records <- data %>%
+  filter(HR == 0)
+
+#inspect one of them 
+Unusual_patient <- data[data$RecordID == high_HR_records$RecordID[1], ]
+Unusual_patient
+#here, the 0 is most likely a mistake, or maybe a collapse and then a revitalization? 
+
+
+
+Unusual_patient <- data[data$RecordID == high_HR_records$RecordID[3], ]
+Unusual_patient
+#but here ffor example no, cause it's the last recorded value and probably he is dead...
+
+
+
+summary(data$K) #(mEq/L)
+hist(data$K) #normal-ish-ish
+
+
+summary(data$Lactate) #(mmol/L)
+hist(data$Lactate) #left skewed
+#some extreme values... 
+
+
+summary(data$Mg) #(mmol/L)
+hist(data$Mg) #normal-ish w some extreme values 
+
+
+summary(data$MAP)
+hist(data$MAP) #normal-ish
+"MAP	Set to NaN if < 1	Impossible mean arterial pressure
+Over 200?"
+
+summary(data$MechVent) #1 if yes
+
+
+summary(data$Na) #(mEq/L)
+hist(data$Na) #normal-ish
+
+
+
+summary(data$NIDiasABP) #(mmHg)
+hist(data$NIDiasABP) #normal-ish
+
+
+summary(data$NIMAP) #(mmHg)
+hist(data$NIMAP) #normal-ish
+
+summary(data$NISysABP) #(mmHg)
+hist(data$NISysABP) #normal-ish
+
+
+
+
+
+summary(data$SysABP) #(mmHg)
+hist(data$SysABP) #normal-ish
+"Set to NaN if < 1	Impossible systolic pressure
+Over 200?"
+
+summary(data$PaCO2) #(mmHg)
+hist(data$PaCO2) #normal-ish, but the right tail is really big
+
+
+
+summary(data$PaO2) #(mmHg)
+hist(data$PaO2) #normal-ish, but the right tail is really big 
+#inspect values smaller than 1
+low_PaO2_records <- data %>%
+  filter(PaO2 < 1)
+
+# Display the RecordID(s) with PaO2 < 1
+IDs <- low_PaO2_records$RecordID
+
+#LET'S INSPECT One of them
+Unusual_patient <- data[data$RecordID == IDs[1], ]
+Unusual_patient
+#the 0 seems more a missing value. 
+
+
+
+#smaller than 20?
+low_PaO2_records <- data %>%
+  filter(PaO2 < 20)
+
+# Display the RecordID(s) with PaO2 < 20
+IDs <- low_PaO2_records$RecordID
+
+#One of them is the one with 0, let's see the other
+Unusual_patient <- data[data$RecordID == IDs[2], ]
+Unusual_patient
+#it's more likely to be 74.7
+
+
+#Correct the non missing data changing 0 to Nan and changining the 74.7
+data$PaO2[data$PaO2 == 0] <- NA
+data$PaO2[data$PaO2 == 7.47] <- 74.7
+
+
+
+summary(data$pH) #pH
+# Multiply by 0.1 if between 65 and 80 (likely unit error)
+idx <- which(!is.na(data$pH) & data$pH >= 65 & data$pH <= 80)
+data$pH[idx] <- data$pH[idx] * 0.1
+
+# Multiply by 0.01 if between 650 and 800 (likely unit error)
+idx <- which(!is.na(data$pH) & data$pH >= 650 & data$pH <= 800)
+data$pH[idx] <- data$pH[idx] * 0.01
+
+hist(data$pH) #normal-ish
+
+
+summary(data$Platelets) #(cells/nL)
+hist(data$Platelets) #normal-ish ( a bit left skewed)
+
+
+
+summary(data$RespRate) #(bpm)
+hist(data$RespRate) #normal-ish
+
+#same as HR, maybe mistakes, maybe dead, maybe ventilation
+ 
+
+
+
+summary(data$SaO2) #(%)
+hist(data$SaO2) #right skewed
+
+
+summary(data$Temp) #(°C)
+#probably mistakes in recording, also cause there are 17 patients w/ a value of -17.8 which we proceed to remove
+
+data$Temp[!is.na(data$Temp) & data$Temp < 20] <- NA #under 20 is likely incompatible with life
+
+
+summary(data$Temp)
+hist(data$Temp) #normal-ish
+
+
+summary(data$TroponinI) #(ng/mL)
+hist(data$TroponinI) #left skewed
+#some extreme values
+
+
+summary(data$TroponinT) #(ng/mL)
+hist(data$TroponinT) #left skewed
+#some extreme values
+
+summary(data$Urine) #(mL)
+hist(data$Urine) #left skewed
+#Some really extreme values
+
+summary(data$WBC) #(cells/nL)
+hist(data$WBC) #left skewed
+#some extreme values
+
+
+```
+
+Save data back 
+```{r}
+# Save the cleaned data back to a Parquet file
+write_parquet(data, "data/processed/set_a_cleaned.parquet")
+```
+
+
