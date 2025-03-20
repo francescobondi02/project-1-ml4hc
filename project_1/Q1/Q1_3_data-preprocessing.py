@@ -14,6 +14,9 @@ from project_1.config import PROJ_ROOT, DATA_DIRECTORY, PROCESSED_DATA_DIR, LOGS
 
 tqdm.pandas()
 
+SEED = 42
+np.random.seed(SEED)
+
 log_file_path = LOGS_DIR / "Q1_3_data-preprocessing.log"
 logging.basicConfig(
     filename=str(log_file_path),
@@ -114,7 +117,7 @@ def knn_impute_static_features(df, static_features=["Age", "Weight", "Height", "
     df_impute[static_features] = df_impute[static_features].replace(-1, np.nan)
     
     # Initialize the KNN imputer.
-    imputer = KNNImputer(n_neighbors=n_neighbors)
+    imputer = KNNImputer(n_neighbors=n_neighbors, random_state=SEED)
     
     # Fit and transform the static features.
     imputed_array = imputer.fit_transform(df_impute[static_features])
