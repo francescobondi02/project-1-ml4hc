@@ -165,6 +165,14 @@ for key, df in sets_dict.items():
     print(f"After interpolation, {key} has shape: {sets_dict[key].shape}")
     logging.info(f"After interpolation, {key} has shape: {sets_dict[key].shape}")
 
+# Saving temporary data for plotting 
+for set_name, set_df in tqdm(sets_dict.items(), desc="Storing DataFrames", unit="set"):
+    output_path = PROCESSED_DATA_DIR / f"{set_name}_to_scale.parquet"
+    logging.info(f"{set_name} final shape: {set_df.shape}")
+    set_df.to_parquet(output_path, index=False, engine = "pyarrow")
+    print(f"Saved {output_path}")
+    logging.info(f"Saved {output_path}")
+
 #########################################################################################################################
 # Scale the Data
 #########################################################################################################################
