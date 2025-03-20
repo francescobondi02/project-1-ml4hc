@@ -74,3 +74,7 @@ irregularly-sampled and sparse, and confounded real world data.
 ```
 
 ---
+
+## How to use:
+
+In the `scripts/` folder there are various `.sh` files. Simply run `./scripts/[name].sh` to execute the whole processes.
