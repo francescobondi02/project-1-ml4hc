@@ -94,78 +94,6 @@ for set_key, df in sets_dict.items():
     check_neg_vals(df)
 
 #########################################################################################################################
-# Imputation for Missing Static Features
-#########################################################################################################################
-
-from sklearn.impute import KNNImputer
-def knn_impute_static_features(df, static_features=["Age", "Weight", "Height", "Gender"], n_neighbors=10):
-    """
-    Impute missing static values (currently indicated by -1) using KNN imputation with n_neighbors.
-    
-    Parameters:
-      df (pd.DataFrame): DataFrame with one row per patient.
-      static_features (list): List of static feature column names to impute.
-      n_neighbors (int): Number of neighbors to use for KNN imputation.
-      
-    Returns:
-      pd.DataFrame: The DataFrame with missing static feature values imputed.
-    """
-    # Work on a copy to avoid modifying the original DataFrame.
-    df_impute = df.copy()
-    
-    # Replace missing values (-1) with np.nan in the static columns.
-    df_impute[static_features] = df_impute[static_features].replace(-1, np.nan)
-    
-    # Initialize the KNN imputer.
-    imputer = KNNImputer(n_neighbors=n_neighbors, random_state=SEED)
-    
-    # Fit and transform the static features.
-    imputed_array = imputer.fit_transform(df_impute[static_features])
-    
-    # Create a new DataFrame with the imputed static features.
-    df_imputed_static = pd.DataFrame(imputed_array, columns=static_features, index=df_impute.index)
-    
-    # Update the original DataFrame with the imputed values.
-    df_impute.update(df_imputed_static)
-    
-    return df_impute
-
-for set_key, df in sets_dict.items():
-    # Impute missing static features
-    # Get the static features in df
-    static_df = df.groupby("RecordID", as_index=False).first()[["RecordID", "Age", "Weight", "Height", "Gender"]].copy()
-    imputed_df = knn_impute_static_features(static_df)
-
-    if imputed_df.index.name == "RecordID":
-        imputed_df = imputed_df.reset_index()
-
-    # Update the original DataFrame with the imputed values
-    static_cols = ["Age", "Weight", "Height", "Gender"]
-    # Create a mapping for each column and update df_full.
-    for col in static_cols:
-        mapping = imputed_df.set_index("RecordID")[col]
-        df[col] = df["RecordID"].map(mapping)
-
-    #sets_dict[set_key] = imputed_df  # Update dictionary (optional)
-
-    # Reorder columns
-
-    # Assume that the first two columns should remain in place.
-    # For example, we assume these are the first two columns of the DataFrame.
-    first_two = list(df.columns[:2])
-    
-    # The rest of the columns, excluding the static columns.
-    remaining = [col for col in df.columns if col not in static_cols and col not in first_two]
-    
-    # Create the new order: first two columns, then the static columns, then the remaining columns.
-    new_order = first_two + static_cols + remaining
-    
-    # Reorder the DataFrame and return
-    df = df[new_order]
-    logging.info(f"{df.head(10)}")
-    print(f"{df.head(10)}")
-
-#########################################################################################################################
 # Outlier Removal
 #########################################################################################################################
 
@@ -223,6 +151,88 @@ for set_key, df in sets_dict.items():
     cleaned_df.to_parquet(output_filename, index=False)
     print(f"Cleaned data for {set_key} saved as {output_filename}")
     logging.info(f"Cleaned data for {set_key} saved as {output_filename}")
+
+#########################################################################################################################
+# Imputation for Missing Static Features
+#########################################################################################################################
+
+from sklearn.impute import KNNImputer
+def knn_impute_static_features(df, static_features=["Age", "Weight", "Height", "Gender"], n_neighbors=10):
+    """
+    Impute missing static values (currently indicated by -1) using KNN imputation with n_neighbors.
+    
+    Parameters:
+      df (pd.DataFrame): DataFrame with one row per patient.
+      static_features (list): List of static feature column names to impute.
+      n_neighbors (int): Number of neighbors to use for KNN imputation.
+      
+    Returns:
+      pd.DataFrame: The DataFrame with missing static feature values imputed.
+    """
+    # Work on a copy to avoid modifying the original DataFrame.
+    df_impute = df.copy()
+    
+    # Replace missing values (-1) with np.nan in the static columns.
+    df_impute[static_features] = df_impute[static_features].replace(-1, np.nan)
+    
+    # Initialize the KNN imputer.
+    imputer = KNNImputer(n_neighbors=n_neighbors)
+    
+    # Fit and transform the static features.
+    imputed_array = imputer.fit_transform(df_impute[static_features])
+    
+    # Create a new DataFrame with the imputed static features.
+    df_imputed_static = pd.DataFrame(imputed_array, columns=static_features, index=df_impute.index)
+    
+    # Update the original DataFrame with the imputed values.
+    df_impute.update(df_imputed_static)
+    
+    return df_impute
+
+for set_key, df in sets_dict.items():
+    # Impute missing static features
+    # Get the static features in df
+    static_df = df.groupby("RecordID", as_index=False).first()[["RecordID", "Age", "Weight", "Height", "Gender"]].copy()
+    imputed_df = knn_impute_static_features(static_df)
+
+    if imputed_df.index.name == "RecordID":
+        imputed_df = imputed_df.reset_index()
+
+    # Check if there are any NaN values
+    if imputed_df.isnull().values.any():
+        logging.warning(f"NaN values found in imputed static features for {set_key}.")
+        logging.info(f"NaN values found in imputed static features for {set_key}.")
+
+    # Update the original DataFrame with the imputed values
+    static_cols = ["Age", "Weight", "Height", "Gender"]
+    # Create a mapping for each column and update df_full.
+    for col in static_cols:
+        mapping = imputed_df.set_index("RecordID")[col]
+        df[col] = df["RecordID"].map(mapping)
+
+    #sets_dict[set_key] = imputed_df  # Update dictionary (optional)
+
+    # Reorder columns
+
+    # Assume that the first two columns should remain in place.
+    # For example, we assume these are the first two columns of the DataFrame.
+    first_two = list(df.columns[:2])
+    
+    # The rest of the columns, excluding the static columns.
+    remaining = [col for col in df.columns if col not in static_cols and col not in first_two]
+    
+    # Create the new order: first two columns, then the static columns, then the remaining columns.
+    new_order = first_two + static_cols + remaining
+    
+    # Reorder the DataFrame and return
+    df = df[new_order]
+
+    # Check if new dataframe has NaN values on the static columns
+    if df[static_cols].isnull().values.any():
+        logging.warning(f"NaN values found in imputed static features for {set_key}.")
+        logging.info(f"NaN values found in imputed static features for {set_key}.")
+    logging.info(f"{df.head(10)}")
+    print(f"{df.head(10)}")
 
 #########################################################################################################################
 # Forward Filling 
