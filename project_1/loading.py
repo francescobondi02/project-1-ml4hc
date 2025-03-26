@@ -69,6 +69,8 @@ def load_final_data_without_ICU():
     print(f"Set A: {set_a.shape}", f"Set B: {set_b.shape}", f"Set C: {set_c.shape}")
     return set_a, set_b, set_c
 
+
+
 def load_outcomes():
     # Define file names
     file_names = ["Outcomes-a.txt", "Outcomes-b.txt", "Outcomes-c.txt"]

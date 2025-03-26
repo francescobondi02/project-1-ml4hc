@@ -11,6 +11,7 @@ import logging
 import numpy as np
 
 from project_1.config import PROJ_ROOT, DATA_DIRECTORY, PROCESSED_DATA_DIR, LOGS_DIR
+from project_1.features import fill_missing_times
 
 tqdm.pandas()
 
@@ -235,6 +236,21 @@ for set_key, df in sets_dict.items():
     print(f"{df.head(10)}")
 
 #########################################################################################################################
+# Adding Missing Time Points
+#########################################################################################################################
+
+"""for set_key, df in sets_dict.items():
+    # Fill in missing time points
+    filled_df = df.groupby("RecordID", group_keys=False).apply(fill_missing_times)
+    sets_dict[set_key] = filled_df  # Update dictionary (optional)
+
+print("Shapes of DataFrames after adding missing timesteps:")
+logging.info("Shapes of DataFrames after adding missing timesteps:")
+for set_key, df in sets_dict.items():
+    print(f"{set_key}: {df.shape}")
+    logging.info(f"{set_key}: {df.shape}")"""
+
+#########################################################################################################################
 # Forward Filling 
 #########################################################################################################################
 
@@ -283,7 +299,7 @@ def time_based_interpolation(df):
     df = df.set_index("Time")
     
     # Identify the columns to interpolate (exclude non-numeric columns like "RecordID").
-    cols_to_interp = [col for col in df.columns if col != "RecordID"]
+    cols_to_interp = [col for col in df.columns if col not in ["RecordID", "Time"]]
     
     # Apply time-based interpolation; limit_direction='both' fills NaNs at the start and end too.
     df[cols_to_interp] = df[cols_to_interp].interpolate(method='time', limit_direction='both')
