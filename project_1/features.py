@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 
 def fill_missing_times(group):
     # Ensure the "Time" column is a datetime object
@@ -59,13 +60,12 @@ def fill_missing_times(group):
     group = group.sort_values('Time').reset_index(drop=True)
     return group
 
-def scale_features_advanced(df):
+def scale_features_advanced(set_a, set_b, set_c):
     """
         Scale the features of the dataset, after having studied the features
     """
-    from sklearn.preprocessing import StandardScaler, RobustScaler
 
-    cols_to_scale = [col for col in df.columns if col not in ["RecordID", "Time", "Gender"]]
+    cols_to_scale = [col for col in set_a.columns if col not in ["RecordID", "Time", "Gender"]]
 
     ### For normally-distributed columns, we use the StandardScaler
     ### For non-normally-distributed columns, we use the RobustScaler
@@ -77,29 +77,72 @@ def scale_features_advanced(df):
     scaler_nnd = RobustScaler()
 
     # Process each set: fit on set_a, then only transform on the others.
-    for set_key in ["set_a", "set_b", "set_c"]:
-        df = sets_dict[set_key]
-        if set_key == "set_a":
-            # Fit on the first set
-            scaled_values_nd = scaler_nd.fit_transform(df[nd_cols])
-            scaled_values_nnd = scaler_nnd.fit_transform(df[nnd_cols])
-        else:
-            # Transform the other sets using the fitted scalers
-            scaled_values_nd = scaler_nd.transform(df[nd_cols])
-            scaled_values_nnd = scaler_nnd.transform(df[nnd_cols])
-        
-        # Convert the scaled numpy arrays to DataFrames while preserving the index
-        df_scaled_nd = pd.DataFrame(scaled_values_nd, columns=nd_cols, index=df.index)
-        df_scaled_nnd = pd.DataFrame(scaled_values_nnd, columns=nnd_cols, index=df.index)
-        
-        # Combine the scaled DataFrames along the columns axis
-        df_scaled = pd.concat([df_scaled_nd, df_scaled_nnd], axis=1)
-        
-        # Combine the unmodified columns with the scaled columns.
-        df_final = pd.concat([df[["RecordID", "Time", "Gender"]].reset_index(drop=True),
-                            df_scaled.reset_index(drop=True)], axis=1)
-        
-        # Update the dictionary with the final DataFrame
-        sets_dict[set_key] = df_final
+    # Fit on the first set
+    scaled_values_nd_a = scaler_nd.fit_transform(set_a[nd_cols])
+    scaled_values_nnd_a = scaler_nnd.fit_transform(set_a[nnd_cols])
+    # Transform the other sets using the fitted scalers
+    scaled_values_nd_b = scaler_nd.transform(set_b[nd_cols])
+    scaled_values_nnd_b = scaler_nnd.transform(set_b[nnd_cols])
 
-__all__ = ['fill_missing_times']
+    scaled_values_nd_c = scaler_nd.transform(set_c[nd_cols])
+    scaled_values_nnd_c = scaler_nnd.transform(set_c[nnd_cols])
+        
+    # Convert the scaled numpy arrays to DataFrames while preserving the index
+    df_scaled_nd_a = pd.DataFrame(scaled_values_nd_a, columns=nd_cols, index=set_a.index)
+    df_scaled_nnd_a = pd.DataFrame(scaled_values_nnd_a, columns=nnd_cols, index=set_a.index)
+
+    df_scaled_nd_b = pd.DataFrame(scaled_values_nd_b, columns=nd_cols, index=set_b.index)
+    df_scaled_nnd_b = pd.DataFrame(scaled_values_nnd_b, columns=nnd_cols, index=set_b.index)
+
+    df_scaled_nd_c = pd.DataFrame(scaled_values_nd_c, columns=nd_cols, index=set_c.index)
+    df_scaled_nnd_c = pd.DataFrame(scaled_values_nnd_c, columns=nnd_cols, index=set_c.index)
+    
+    # Combine the scaled DataFrames along the columns axis
+    df_scaled_a = pd.concat([df_scaled_nd_a, df_scaled_nnd_a], axis=1)
+    df_scaled_b = pd.concat([df_scaled_nd_b, df_scaled_nnd_b], axis=1)
+    df_scaled_c = pd.concat([df_scaled_nd_c, df_scaled_nnd_c], axis=1)
+    
+    # Combine the unmodified columns with the scaled columns.
+    df_final_a = pd.concat([set_a[["RecordID", "Time", "Gender"]].reset_index(drop=True),
+                        df_scaled_a.reset_index(drop=True)], axis=1)
+    
+    df_final_b = pd.concat([set_b[["RecordID", "Time", "Gender"]].reset_index(drop=True),
+                        df_scaled_b.reset_index(drop=True)], axis=1)
+    
+    df_final_c = pd.concat([set_c[["RecordID", "Time", "Gender"]].reset_index(drop=True),
+                        df_scaled_c.reset_index(drop=True)], axis=1)
+    return df_final_a, df_final_b, df_final_c
+
+def scale_features_basic(set_a, set_b, set_c):
+    """
+    Scale the features of the dataset using MinMax scaling for every feature.
+    The scaler is fit on set_a and then used to transform set_b and set_c.
+    """
+    # Define the columns to scale (exclude RecordID, Time, and Gender)
+    cols_to_scale = [col for col in set_a.columns if col not in ["RecordID", "Time", "Gender"]]
+    
+    # Initialize and fit the MinMaxScaler on set_a's features
+    scaler = MinMaxScaler()
+    scaled_values_a = scaler.fit_transform(set_a[cols_to_scale])
+    
+    # Transform the features of set_b and set_c
+    scaled_values_b = scaler.transform(set_b[cols_to_scale])
+    scaled_values_c = scaler.transform(set_c[cols_to_scale])
+    
+    # Convert the scaled arrays back to DataFrames with the same columns and indices
+    df_scaled_a = pd.DataFrame(scaled_values_a, columns=cols_to_scale, index=set_a.index)
+    df_scaled_b = pd.DataFrame(scaled_values_b, columns=cols_to_scale, index=set_b.index)
+    df_scaled_c = pd.DataFrame(scaled_values_c, columns=cols_to_scale, index=set_c.index)
+    
+    # Combine the unmodified columns with the scaled columns
+    df_final_a = pd.concat([set_a[["RecordID", "Time", "Gender"]].reset_index(drop=True),
+                            df_scaled_a.reset_index(drop=True)], axis=1)
+    df_final_b = pd.concat([set_b[["RecordID", "Time", "Gender"]].reset_index(drop=True),
+                            df_scaled_b.reset_index(drop=True)], axis=1)
+    df_final_c = pd.concat([set_c[["RecordID", "Time", "Gender"]].reset_index(drop=True),
+                            df_scaled_c.reset_index(drop=True)], axis=1)
+    
+    return df_final_a, df_final_b, df_final_c
+
+
+__all__ = ['fill_missing_times', "scale_features_advanced", "scale_features_basic"]

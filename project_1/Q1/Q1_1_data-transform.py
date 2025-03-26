@@ -58,6 +58,19 @@ print(sets_dict["set_a"].head())
 print(sets_dict["set_a"].shape)
 
 ##########################################################################################
+# Creating Data Processed Directory
+##########################################################################################
+
+# Create the directory if it doesn't exist
+set_a_path = Path(PROCESSED_DATA_DIR / "set_a")
+set_b_path = Path(PROCESSED_DATA_DIR / "set_b")
+set_c_path = Path(PROCESSED_DATA_DIR / "set_c")
+
+set_a_path.mkdir(parents=True, exist_ok=True)
+set_b_path.mkdir(parents=True, exist_ok=True)
+set_c_path.mkdir(parents=True, exist_ok=True)
+
+##########################################################################################
 # Discretizing Time Column
 ##########################################################################################
 
@@ -101,7 +114,7 @@ print(sets_dict["set_a"].head())
 ##########################################################################################
 
 for set_name, set_df in tqdm(sets_dict.items(), desc="Storing DataFrames", unit="set"):
-    output_path = PROCESSED_DATA_DIR / f"{set_name}.parquet"
+    output_path = PROCESSED_DATA_DIR / f"{set_name}" / f"{set_name}.parquet"
     set_df.to_parquet(output_path, index=False, engine = "pyarrow")
     print(f"Saved {output_path}")
 

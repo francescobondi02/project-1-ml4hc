@@ -7,6 +7,8 @@ from tqdm import tqdm
 
 from sklearn.metrics import roc_auc_score, average_precision_score
 
+NUM_EPOCHS = 20
+
 # Function that creates a dataset from a dataframe
 def create_dataset_from_timeseries(dataframe, labels):
     """
@@ -28,7 +30,7 @@ def create_dataset_from_timeseries(dataframe, labels):
     return TensorDataset(X, y)
 
 # Training loop for generic PyTorch model
-def train_model_with_validation(model, train_loader, valid_loader, criterion, optimizer, device, num_epochs=10, scheduler=None):
+def train_model_with_validation(model, train_loader, valid_loader, criterion, optimizer, device, num_epochs=NUM_EPOCHS, scheduler=None):
     """
     Training loop for binary classification models with a validation phase.
     Computes AUCROC and AUPRC metrics for both training and validation sets.
@@ -138,14 +140,15 @@ def train_model_with_validation(model, train_loader, valid_loader, criterion, op
         if scheduler is not None:
             scheduler.step()
         
-        print(f"Epoch {epoch+1}/{num_epochs}")
-        print(f"  Train Loss: {train_loss:.4f} | AUCROC: {train_auc:.4f} | AUPRC: {train_auprc:.4f}")
-        print(f"  Val   Loss: {val_loss:.4f} | AUCROC: {val_auc:.4f} | AUPRC: {val_auprc:.4f}\n")
+        if epoch % 10 == 0:
+            print(f"Epoch {epoch+1}/{num_epochs}")
+            print(f"  Train Loss: {train_loss:.4f} | AUCROC: {train_auc:.4f} | AUPRC: {train_auprc:.4f}")
+            print(f"  Val   Loss: {val_loss:.4f} | AUCROC: {val_auc:.4f} | AUPRC: {val_auprc:.4f}\n")
     
     return model
 
 # Training loop for generic PyTorch model
-def train_model(model, train_loader, criterion, optimizer, device, num_epochs=10, scheduler=None):
+def train_model(model, train_loader, criterion, optimizer, device, num_epochs=NUM_EPOCHS, scheduler=None):
     """
     Generic training loop for PyTorch models without a validation phase.
     
@@ -212,7 +215,8 @@ def train_model(model, train_loader, criterion, optimizer, device, num_epochs=10
         if scheduler is not None:
             scheduler.step()
         
-        print(f"Epoch {epoch+1}/{num_epochs} - Loss: {epoch_loss:.4f} - AUCROC: {epoch_auc:.4f} - AUPRC: {epoch_auprc:.4f}")
+        if epoch % 10 == 0:
+            print(f"Epoch {epoch+1}/{num_epochs} - Loss: {epoch_loss:.4f} - AUCROC: {epoch_auc:.4f} - AUPRC: {epoch_auprc:.4f}")
     
     return model
 

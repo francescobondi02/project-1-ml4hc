@@ -34,7 +34,7 @@ sets_dict = {}
 sets = ["a", "b", "c"]
 
 for set_name in sets:
-    directory = PROCESSED_DATA_DIR / f"set_{set_name}.parquet"
+    directory = PROCESSED_DATA_DIR / f"set_{set_name}" / f"set_{set_name}.parquet"
     temp_set = pd.read_parquet(directory)
     sets_dict[f"set_{set_name}"] = temp_set
 
@@ -148,7 +148,7 @@ for set_key, df in sets_dict.items():
     sets_dict[set_key] = cleaned_df  # Update dictionary (optional)
 
     # Export to Parquet file (e.g., "set_a_cleaned.parquet")
-    output_filename = PROCESSED_DATA_DIR / f"{set_key}_cleaned.parquet"
+    output_filename = PROCESSED_DATA_DIR / f"{set_key}" / f"{set_key}_before_imputation.parquet"
     cleaned_df.to_parquet(output_filename, index=False)
     print(f"Cleaned data for {set_key} saved as {output_filename}")
     logging.info(f"Cleaned data for {set_key} saved as {output_filename}")
@@ -235,6 +235,13 @@ for set_key, df in sets_dict.items():
     logging.info(f"{df.head(10)}")
     print(f"{df.head(10)}")
 
+    for set_key, df in sets_dict.items():
+        # Export to Parquet file (e.g., "set_a....parquet")
+        output_filename = PROCESSED_DATA_DIR / f"{set_key}" / f"{set_key}_before_ffill.parquet"
+        cleaned_df.to_parquet(output_filename, index=False)
+        print(f"Cleaned data for {set_key} saved as {output_filename}")
+        logging.info(f"Cleaned data for {set_key} saved as {output_filename}")
+
 #########################################################################################################################
 # Adding Missing Time Points
 #########################################################################################################################
@@ -270,6 +277,12 @@ for set_key, df in sets_dict.items():
     # Forward fill the DataFrame
     filled_df = forward_fill(df)
     sets_dict[set_key] = filled_df  # Update dictionary (optional)
+
+    # Export to Parquet file (e.g., "set_a....parquet")
+    output_filename = PROCESSED_DATA_DIR / f"{set_key}" / f"{set_key}_before_backward.parquet"
+    filled_df.to_parquet(output_filename, index=False)
+    print(f"Forward-filled data for {set_key} saved as {output_filename}")
+    logging.info(f"Forward-filled data for {set_key} saved as {output_filename}")
 
 #########################################################################################################################
 # Interpolation as Backward Filling
@@ -316,7 +329,7 @@ for key, df in sets_dict.items():
 
 # Saving temporary data for plotting 
 for set_name, set_df in tqdm(sets_dict.items(), desc="Storing DataFrames", unit="set"):
-    output_path = PROCESSED_DATA_DIR / f"{set_name}_to_scale.parquet"
+    output_path = PROCESSED_DATA_DIR / f"{set_name}" / f"{set_name}_before_scaling.parquet"
     logging.info(f"{set_name} final shape: {set_df.shape}")
     set_df.to_parquet(output_path, index=False, engine = "pyarrow")
     print(f"Saved {output_path}")
@@ -373,7 +386,7 @@ print(sets_dict["set_a"].head(10))
 #########################################################################################################################
 
 for set_name, set_df in tqdm(sets_dict.items(), desc="Storing DataFrames", unit="set"):
-    output_path = PROCESSED_DATA_DIR / f"{set_name}_final.parquet"
+    output_path = PROCESSED_DATA_DIR / f"{set_name}" / f"{set_name}_final.parquet"
     logging.info(f"{set_name} final shape: {set_df.shape}")
     set_df.to_parquet(output_path, index=False, engine = "pyarrow")
     print(f"Saved {output_path}")
