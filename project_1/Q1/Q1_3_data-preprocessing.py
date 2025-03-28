@@ -104,7 +104,7 @@ def clean_df(df):
       - Missing value handling: For Age, Gender, Height, ICUType, Weight, set -1 to NA.
       - Height outlier removal: Set Height to NA if < 100 cm or >= 300 cm.
       - Weight outlier removal: Set Weight to NA if < 20 kg or >= 300 kg.
-      - PaO2 corrections: Set PaO2 equal to 0 to NA; if PaO2 equals 7.47, correct it to 74.7.
+      - PaO2 corrections: Set PaO2 equal to 0 to NA; if PaO2 equals 7.47, correct it to 74.7 because it's the only value out of range
       - pH unit correction: If pH is between 65 and 80, divide by 10; if between 650 and 800, divide by 100.
       - Temperature corrections: Set Temp to NA if Temp is less than 20.
     """
