@@ -19,17 +19,17 @@ knitr::opts_knit$set(root.dir = here::here())
 
 ```
 
-
-```{r loading data}
-getwd()
+# Data loading
+```{r}
 # Read the Parquet file and load the data
-data <- read_parquet("data/processed/set_a.parquet")
+data <- read_parquet("data/processed/set_a/set_a.parquet")
+
 data$Time <- as.POSIXct(data$Time, tz = "UTC")  # Set time zone explicitly
 
 # Check the first few timestamps
 head(data$Time)  # Output should show the exact timestamps, e.g., "2025-03-10 01:00:00 UTC"
 
-# Visualizing missing data
+# Visualizing missing data (a lot)
 plot_missing(data)
 ```
 ## Initial Data Exploration
@@ -43,17 +43,6 @@ colnames(data)
 
 # Summary statistics for numeric columns
 summary(data)
-
-
-
-# Histograms for numeric variables (ignoring NAs)
-data %>%
-  select(where(is.numeric)) %>%
-  pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
-  ggplot(aes(value)) +
-  geom_histogram(bins = 30, na.rm = TRUE) +
-  facet_wrap(~ variable, scales = "free") +
-  labs(title = "Distributions of Numeric Variables (Ignoring NAs)")
 ```
 
 ### Variable Explanation and Notes
@@ -71,11 +60,11 @@ patient's record)."
 - **ICUType**: ICU type (1: Coronary Care Unit, 2: Cardiac Surgery Recovery Unit, 3: Medical ICU, or 4: Surgical ICU)
 - **Weight**: Weight in kg
 
-"NB: All valid values for general descriptors, time series variables, and outcome-related 
+"*NB**: All valid values for general descriptors, time series variables, and outcome-related 
 descriptors are non-negative (≥ 0). A value of -1 indicates missing or unknown data."
 
 
-
+# Data Handling and extreme values
 ```{r}
 #So first of all we set the -1 in columns "Age", "Gender", "Height", ICUType, Weight to NA
 # Replace -1 with NA for Height, Age, and Weight
@@ -88,13 +77,11 @@ data <- data %>%
     Gender = ifelse(Gender ==-1, NA, Gender)
   )
 
-
-#So when we will use algoritms that need to remove the NAs? What will we do? 
-#I mean we could even do imputation actually (Weight can be predicted by age and Height for ex)
 ```
 
 
-###Handling missing data in static variables
+## Handling missing data in static variables
+
 ```{r}
 # Static data: Keep the first row for each patient for simplicity in the next EDA
 #and inspect for missing values
@@ -120,7 +107,7 @@ data_static %>%
 
 
 
-### Exploring Continuous Static Variables (Height, Weight, Age)
+## Exploring Continuous Static Variables (Height, Weight, Age)
 
 ```{r}
 # Distribution for Height
@@ -163,22 +150,25 @@ data_static %>%
 data_static %>%
   filter(Age != -1) %>%
   ggplot(aes(x = Age)) +
-  geom_histogram(binwidth = 5, fill = "skyblue", color = "black") + 
-  labs(title = "Distribution of Age", x = "Age", y = "Count")
+  geom_histogram(binwidth = 5, 
+                 fill = "#4E79A7",           # More professional blue
+                 color = "white",             # White borders for cleaner look
+                 alpha = 0.8) +               # Slightly transparent
+  labs(title = "Patient Age Distribution",    # More descriptive title
+       subtitle = "Ages binned in 5-year intervals",
+       x = "Age (years)", 
+       y = "Number of Patients") +            # More clinical-sounding label
+  theme_minimal() +                           # Clean, modern background
+  theme(
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 10, hjust = 0.5, color = "gray40"),
+    axis.title = element_text(size = 12),
+    panel.grid.major = element_line(color = "gray90"),  # Lighter grid lines
+    panel.grid.minor = element_blank()                  # Remove minor grid
+  ) +
+  scale_x_continuous(breaks = seq(0, 120, by = 10))     # Better x-axis labels
 
-# Smooth density plot for Weight
-data_static %>%
-  filter(Weight != -1) %>%
-  ggplot(aes(x = Weight)) +
-  geom_density(fill = "skyblue", alpha = 0.5) +  
-  labs(title = "Density Plot of Weight", x = "Weight", y = "Density")
 
-# Smooth density plot for Age
-data_static %>%
-  filter(Age != -1) %>%
-  ggplot(aes(x = Age)) +
-  geom_density(fill = "skyblue", alpha = 0.5) +  
-  labs(title = "Density Plot of Age", x = "Age", y = "Density")
 
 ###########
 # Inspecting Extreme Weight Values
@@ -188,46 +178,16 @@ data_static %>%
 data_static %>%
   filter((Weight < 30 | Weight > 300) & Weight != -1) %>%  
   select(RecordID, Age, Height, Weight)
-# Don't know actually, maybe it's an ok value honestly
+# Don't know actually, maybe it's an ok value honestly. Super skinny old lady
 
 
 #put also the summaries in the output
 ```
-## Boxplot for Age by ICUType
-
-```{r}
-data_static %>%
-  filter(Age != -1) %>%
-  ggplot(aes(x = factor(ICUType), y = Age, fill = factor(ICUType))) +
-  geom_boxplot() +
-  labs(title = "Age by ICU Type", x = "ICU Type", y = "Age") +
-  theme_minimal()
-
-# Boxplot for Weight by ICUType
-data_static %>%
-  filter(Weight != -1) %>%
-  ggplot(aes(x = factor(ICUType), y = Weight, fill = factor(ICUType))) +
-  geom_boxplot() +
-  labs(title = "Weight by ICU Type", x = "ICU Type", y = "Weight") +
-  theme_minimal()
-
-# Boxplot for Height by ICUType
-data_static %>%
-  filter(Height != -1) %>%
-  ggplot(aes(x = factor(ICUType), y = Height, fill = factor(ICUType))) +
-  geom_boxplot() +
-  labs(title = "Height by ICU Type", x = "ICU Type", y = "Height") +
-  theme_minimal()
-```
-
-NOTE, I also tried to do some anova to see if the difference between ICU class is signficant. 
-<!-- I get non signficant results for everything exept for Age, but then since the Age distribution is soo far from a Normal the results are not reliable. -->
 
 
+# Exploring Time changing variables
 
-
-### Exploring Time changing variables
-
+This step is performed to inspect the variable distribution and choose for each one of them the correct scaling method 
 ```{r}
 
 
@@ -244,17 +204,17 @@ bell shaped"
 summary(data$ALP) #(IU/L)]
 hist(data$ALP) #left skewed
 #usually max range is around 150.
-#Maybe should remove over 1000, Sticazzi
+#Maybe should remove over 1000, 
 
 
 summary(data$ALT) #(IU/L)]
 hist(data$ALT) #left skewed
-#maybe should remove over 3000, sticazzi
+#maybe should remove over 3000, 
 
 
 summary(data$AST) #(IU/L)]
 hist(data$AST) #left skewed
-##maybe should remove over 3000, sticazzi
+##maybe should remove over 3000, 
 
 summary(data$Bilirubin) #(mg/dL)
 hist(data$Bilirubin) #left skewed
@@ -348,7 +308,24 @@ hist(data$MAP) #normal-ish
 "MAP	Set to NaN if < 1	Impossible mean arterial pressure
 Over 200?"
 
-summary(data$MechVent) #1 if yes
+summary(data$MechVent) #1 if yes.... PROBLEM!!
+#We only have ones --> this mean that the others are NAN, here we need to choose wether NAN means 0
+#I suggest to put a 1 to patients who have alredy a 1, and put 0 otwise.
+data$MechVent <- as.numeric(as.character(data$MechVent))
+
+data <- data %>%
+  group_by(RecordID) %>%
+  mutate(MechVent = ifelse(any(MechVent == 1, na.rm = TRUE), 
+                         replace(MechVent, is.na(MechVent), 1),
+                         replace(MechVent, is.na(MechVent), 0))) %>%
+  ungroup()
+
+summary(data$MechVent)
+
+#change again to categorical
+data$MechVent <- as.factor(data$MechVent)
+table(data$MechVent)
+
 
 
 summary(data$Na) #(mEq/L)
@@ -473,11 +450,120 @@ hist(data$WBC) #left skewed
 
 
 ```
+## Final Steps to ensure consistency of data before coding everything in Python
 
-Save data back 
 ```{r}
-# Save the cleaned data back to a Parquet file
-write_parquet(data, "data/processed/set_a_cleaned.parquet")
+#find if there are any RecordID like this:140501, 150649, 140936, 143656, 141264, 145611, 142998, 147514, 142731,150309, 155655, 156254.
+data %>%
+  filter(RecordID %in% c(140501, 150649, 140936, 143656, 141264, 145611, 142998, 147514, 142731,150309, 155655, 156254)) %>%
+  select(RecordID, Time)
+```
+```{r}
+#FIND those RecordID that has only one entry
+data %>%
+  group_by(RecordID) %>%
+  summarise(n = n()) %>%
+  filter(n == 1)
+
 ```
 
+```{r}
+##Find all those lines with negative values (there cannot be according to the website)
+data %>%
+  filter(Albumin < 0 | ALP < 0 | ALT < 0 | AST < 0 | Bilirubin < 0 | BUN < 0 | Cholesterol < 0 | Creatinine < 0 | DiasABP < 0 | FiO2 < 0 | GCS < 0 | Glucose < 0 | HCO3 < 0 | HCT < 0 | HR < 0 | K < 0 | Lactate < 0 | Mg < 0 | MAP < 0 | Na < 0 | NIDiasABP < 0 | NIMAP < 0 | NISysABP < 0 | SysABP < 0 | PaCO2 < 0 | PaO2 < 0 | pH < 0 | Platelets < 0 | RespRate < 0 | SaO2 < 0 | Temp < 0 | TroponinI < 0 | TroponinT < 0 | Urine < 0 | WBC < 0)
+
+#There arent anymore
+```
+
+
+
+
+# MULTIVARIATE GRAPHS
+Consider also patients by demographic information such as gender, age (you can build bins
+of e.g. 5 or 10 years), or the ICUType. Do you observe differences in the distributions of
+some of the values across the groups?
+
+
+## Boxplot for Age by ICUType
+
+```{r}
+data_static %>%
+  filter(Age != -1) %>%
+  ggplot(aes(x = factor(ICUType), y = Age, fill = factor(ICUType))) +
+  geom_boxplot() +
+  labs(title = "Age by ICU Type", x = "ICU Type", y = "Age") +
+  theme_minimal()
+
+# Boxplot for Weight by ICUType
+data_static %>%
+  filter(Weight != -1) %>%
+  ggplot(aes(x = factor(ICUType), y = Weight, fill = factor(ICUType))) +
+  geom_boxplot() +
+  labs(title = "Weight by ICU Type", x = "ICU Type", y = "Weight") +
+  theme_minimal()
+
+# Boxplot for Height by ICUType
+data_static %>%
+  filter(Height != -1) %>%
+  ggplot(aes(x = factor(ICUType), y = Height, fill = factor(ICUType))) +
+  geom_boxplot() +
+  labs(title = "Height by ICU Type", x = "ICU Type", y = "Height") +
+  theme_minimal()
+```
+
+NOTE, I also tried to do some anova to see if the difference between ICU class is signficant. 
+<!-- I get non signficant results for everything exept for Age, but then since the Age distribution is soo far from a Normal the results are not reliable. -->
+
+
+### Chi-square ICUType vs MechVent
+```{r}
+data_chi <- data %>% filter(!is.na(ICUType) & !is.na(MechVent))
+table_ICU_Mech <- table(data_chi$ICUType, data_chi$MechVent)
+chisq.test(table_ICU_Mech) 
+#check assumption 
+chisq.test(table_ICU_Mech)$expected  #ok it's fine
+
+
+library(lsr)
+cramersV(table_ICU_Mech)
+
+chisq.test(table_ICU_Mech)$stdres
+
+mosaicplot(table_ICU_Mech, shade = TRUE, 
+           main = "Mechanical Ventilation by ICU Type", 
+           xlab = "ICU Type", ylab = "Mechanical Ventilation")  
+```
+
+```{r}
+data_static %>% 
+  filter(Age != -1) %>% 
+  pull(Age) %>% 
+  quantile(probs = seq(0, 1, 0.1)) %>%  # Change to seq(0,1,0.25) for quartiles
+  knitr::kable(col.names = "Age")
+```
+
+### Gendere vs HR
+I need to fill the Gender values for each person to having plots that resemble real data, not only the first row...
+```{r}
+data <- data %>%
+  group_by(RecordID) %>%
+  mutate(Gender = ifelse(any(Gender == 1, na.rm = TRUE), 
+                         1,  # If any row has 1, set all to 1
+                         0)) %>% # Otherwise, set all to 0
+  ungroup()
+
+
+data$Gender <- as.factor(data$Gender)  
+
+
+data_hr <- data %>% filter(!is.na(HR))  # Only keep rows with HR
+
+ggplot(data_hr, aes(x = as.factor(Gender), y = HR  , fill = as.factor(Gender))) +
+  geom_violin(trim = FALSE) +
+  labs(title = "Heart Rate by Gender", x = "Gender", y = "Heart Rate") +
+  theme_minimal()
+
+#perform t-test
+t.test(HR ~ Gender, data = data_hr)
+```
 
