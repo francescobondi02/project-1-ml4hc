@@ -5,20 +5,48 @@ import pandas as pd
 import numpy as np
 import torch
 import torch.nn as nn
+import subprocess
 from torch.utils.data import DataLoader, TensorDataset
 
 from project_1.config import PROJ_ROOT, PROCESSED_DATA_DIR
 from project_1.loading import *
 from project_1.dataset import *
+from project_1.features import *
+
+torch.manual_seed(0)
+
+################################################################################
+# nvidia-smi
+################################################################################
+
+def check_nvidia_smi():
+    try:
+        result = subprocess.run(['nvidia-smi'], stdout=subprocess.PIPE, text=True, check=True)
+        print(result.stdout)
+    except Exception as e:
+        print("Error checking GPU status:", e)
 
 ################################################################################
 # Data Loading
 ################################################################################
 
 # For this part, we need to load the initial data
-set_a_initial, set_b_initial, set_c_initial = load_basic_data()
+"""set_a, set_b, set_c = load_before_scaling()
 death_a, death_b, death_c = load_outcomes()
-set_a_initial.head()
+
+# Scale using basic scaling
+set_a_scaled, set_b_scaled, set_c_scaled = scale_features_basic(set_a, set_b, set_c)
+
+# Remove the ICUType feature
+set_a_scaled = set_a_scaled.drop(columns=['ICUType'])
+set_b_scaled = set_b_scaled.drop(columns=['ICUType'])
+set_c_scaled = set_c_scaled.drop(columns=['ICUType'])"""
+
+# For this part we need the scaled data with simple
+set_a_initial, set_b_initial, set_c_initial = load_initial_data()
+death_a, death_b, death_c = load_outcomes()
+print(set_a_initial.shape, set_b_initial.shape, set_c_initial.shape)
+print(set_a_initial.head())
 
 ################################################################################
 # Transformer Definition
@@ -171,19 +199,28 @@ dataset_a = TensorDataset(X_a, torch.tensor(y_a.values, dtype=torch.float32))
 dataset_b = TensorDataset(X_b, torch.tensor(y_b.values, dtype=torch.float32))
 dataset_c = TensorDataset(X_c, torch.tensor(y_c.values, dtype=torch.float32))
 
-loader_a = DataLoader(dataset_a, batch_size=64, shuffle=True)
-loader_b = DataLoader(dataset_b, batch_size=64, shuffle=False)
-loader_c = DataLoader(dataset_c, batch_size=64, shuffle=False)
+loader_a = DataLoader(dataset_a, batch_size=128, shuffle=True, num_workers=4, pin_memory=True)
+loader_b = DataLoader(dataset_b, batch_size=128, shuffle=False, num_workers=4, pin_memory=True)
+loader_c = DataLoader(dataset_c, batch_size=128, shuffle=False, num_workers=4, pin_memory=True)
 
 ################################################################################
 # Train the Model
 ################################################################################
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if torch.cuda.is_available():
+    current_device = torch.cuda.current_device()
+    device_name = torch.cuda.get_device_name(current_device)
+    print(f"Using GPU {current_device}: {device_name}")
+else:
+    print("CUDA is not available.")
+print("Using device:", device)
 model_tvz = TransformerClassifier(input_size=3).to(device)
 criterion = nn.BCEWithLogitsLoss()
 optimizer = torch.optim.Adam(model_tvz.parameters(), lr=0.001)
 
+print("GPU status before training:")
+check_nvidia_smi()
 model_tvz = train_model_with_validation(model_tvz, loader_a, loader_b, criterion, optimizer, device)
 
 ################################################################################

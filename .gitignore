@@ -187,3 +187,10 @@ cython_debug/
 .Rproj.user
 
 .vscode/
+
+# Cluster stuff
+./python_test.err
+./python_test.out
+./run_cpu.sh
+./run_gpu.sh
+
