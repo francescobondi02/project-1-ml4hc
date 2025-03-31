@@ -1,3 +1,0 @@
-from .config import DATA_DIRECTORY
-print(DATA_DIRECTORY)
-# IT'S WORKING LET'S GO DIOCANE
