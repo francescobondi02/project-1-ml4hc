@@ -1,10 +1,8 @@
-# project-1
+# ICU Time Series Analysis: Predictive Modeling and Representation Learning
 
 <a target="_blank" href="https://cookiecutter-data-science.drivendata.org/">
     <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
 </a>
-
-A short description of the project.
 
 ## Abstract
 
@@ -22,7 +20,7 @@ The goal of this project is to get familiar with such a promising type of health
 at the same time learning how to tackle the challenges of working on noisy, multi-variate,
 irregularly-sampled and sparse, and confounded real world data.
 
-## Project Organization
+## 📦 Project Organization
 
 ```
 ├── LICENSE            <- Open-source license if one is chosen
@@ -71,13 +69,28 @@ irregularly-sampled and sparse, and confounded real world data.
 
 ---
 
+## ⚙️ Setup
+
+Install dependencies (recommended via virtual environment):
+
+```
+pip install -r requirements.txt
+```
+
+### ⚠️ Ollama Note
+
+This project uses the ollama Python package to interface with locally running language models. Please ensure that Ollama is installed on your device before using this feature—otherwise, the Python package will not function correctly.
+You can follow the installation guide here: https://ollama.com/download
+
+---
+
 ## 🚀 How to Run the Project
 
 This project is organized into four main questions (Q1–Q4), each addressing a different part of ICU time-series analysis. Follow the instructions below to reproduce the results.
 
 ---
 
-### ✅ Q1: Data Preprocessing
+### 📊 Q1: Data Preprocessing
 
 1. Download the challenge dataset from PhysioNet:  
    [`predicting-mortality-of-icu-patients-the-physionet-computing-in-cardiology-challenge-2012-1.0.0`](https://physionet.org/content/challenge-2012/1.0.0/)
@@ -102,7 +115,7 @@ This project is organized into four main questions (Q1–Q4), each addressing a 
 
 ---
 
-### ✅ Q2: Supervised Learning
+### 🤖 Q2: Supervised Learning
 
 Explore different supervised learning models and results in the following notebook:
 
@@ -110,7 +123,7 @@ Explore different supervised learning models and results in the following notebo
 
 ---
 
-### ✅ Q3: Representation Learning
+### 🤯 Q3: Representation Learning
 
 Dive into self-supervised learning and contrastive representation learning in:
 
@@ -118,7 +131,7 @@ Dive into self-supervised learning and contrastive representation learning in:
 
 ---
 
-### ✅ Q4: Foundation Models
+### 🧠 Q4: Foundation Models
 
 Analyze foundation model performance and transfer learning setups in:
 
