@@ -28,14 +28,16 @@ irregularly-sampled and sparse, and confounded real world data.
 ├── LICENSE            <- Open-source license if one is chosen
 ├── Makefile           <- Makefile with convenience commands like `make data` or `make train`
 ├── README.md          <- The top-level README for developers using this project.
+│
 ├── data
-│   ├── processed      <- The final, canonical data sets for modeling.
-        ├── set_a      
-│   └── raw            <- The original, immutable data dump.
+│   ├── data_1         <- Contains the initial raw data from the challenge.
+│   └── processed      <- The final, cleaned data used for modeling.
 │
-├── docs               <- A default mkdocs project; see www.mkdocs.org for details
+├── docs               <- Documentation files for the project
+│   ├── Project 1 - ICU Time Series - Handout.pdf
+│   └── Project 1 - ICU Time Series - Slides.pdf
 │
-├── models             <- Trained and serialized models, model predictions, or model summaries
+├── models             <- Trained models, predictions, or model summaries
 │
 ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
 │                         the creator's initials, and a short `-` delimited description, e.g.
@@ -44,36 +46,80 @@ irregularly-sampled and sparse, and confounded real world data.
 ├── pyproject.toml     <- Project configuration file with package metadata for
 │                         project_1 and configuration for tools like black
 │
-├── references         <- Data dictionaries, manuals, and all other explanatory materials.
+├── references         <- Data dictionaries, manuals, and other reference materials.
 │
 ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-│   └── figures        <- Generated graphics and figures to be used in reporting
+│   └── figures        <- Generated figures for reporting and presentations
 │
-├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-│                         generated with `pip freeze > requirements.txt`
+├── requirements.txt   <- The requirements file to reproduce the analysis environment
 │
-├── setup.cfg          <- Configuration file for flake8
+├── setup.cfg          <- Configuration file for linting tools like flake8
 │
-└── project_1   <- Source code for use in this project.
-    │
-    ├── __init__.py             <- Makes project_1 a Python module
-    │
-    ├── config.py               <- Store useful variables and configuration
-    │
-    ├── dataset.py              <- Scripts to download or generate data
-    │
-    ├── features.py             <- Code to create features for modeling
-    │
-    ├── modeling
-    │   ├── __init__.py
-    │   ├── predict.py          <- Code to run model inference with trained models
-    │   └── train.py            <- Code to train models
-    │
-    └── plots.py                <- Code to create visualizations
+├── scripts            <- Shell scripts or utilities for automation
+│   └── run_Q1_data_processing.sh  <- Script to execute all Q1 processing steps
+│
+└── project_1          <- Python module containing the core logic for the project
+    ├── __init__.py
+    ├── Q1/            <- Code for Question 1 (e.g., preprocessing, cleaning)
+    ├── Q2/            <- Code for Question 2 (e.g., tokenization, embeddings)
+    ├── Q4/            <- Code for Question 4 (e.g., classifier training)
+    ├── loading.py     <- Functions to load raw and processed data
+    ├── features.py    <- Functions for feature scaling and preprocessing
+    └── dataset.py     <- Functions to convert data into PyTorch datasets
+
 ```
 
 ---
 
-## How to use:
+## 🚀 How to Run the Project
 
-In the `scripts/` folder there are various `.sh` files. Simply run `./scripts/[name].sh` to execute the whole processes.
+This project is organized into four main questions (Q1–Q4), each addressing a different part of ICU time-series analysis. Follow the instructions below to reproduce the results.
+
+---
+
+### ✅ Q1: Data Preprocessing
+
+1. Download the challenge dataset from PhysioNet:  
+   [`predicting-mortality-of-icu-patients-the-physionet-computing-in-cardiology-challenge-2012-1.0.0`](https://physionet.org/content/challenge-2012/1.0.0/)
+
+2. Place the extracted folder inside:
+
+   ```
+   data/data_1/
+   ```
+
+3. Run the preprocessing script to clean and process the raw data:
+
+   ```
+   bash scripts/run_Q1_data_processing.sh
+   ```
+
+   This will generate all necessary `.parquet` files inside:
+
+   ```
+   data/processed/
+   ```
+
+---
+
+### ✅ Q2: Supervised Learning
+
+Explore different supervised learning models and results in the following notebook:
+
+📓 `notebooks/2_Q2_supervised_learning.ipynb`
+
+---
+
+### ✅ Q3: Representation Learning
+
+Dive into self-supervised learning and contrastive representation learning in:
+
+📓 `notebooks/3_Q3_representation_learning.ipynb`
+
+---
+
+### ✅ Q4: Foundation Models
+
+Analyze foundation model performance and transfer learning setups in:
+
+📓 `notebooks/4_Q4_foundation_models.ipynb`
