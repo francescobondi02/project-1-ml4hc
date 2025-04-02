@@ -1,9 +1,14 @@
 loguru
 mkdocs
-pip
 python-dotenv
 ruff
 tqdm
 typer
--e .
+torch
 ollama
+numpy
+pandas
+scikit-learn
+bigdl-chronos
+tsfresh
+umap-learn
