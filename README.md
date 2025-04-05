@@ -77,6 +77,11 @@ Install dependencies (recommended via virtual environment):
 pip install -r requirements.txt
 ```
 
+## 🧩 Recommended VSCode Extension
+
+For a better developer experience, we recommend installing the [Colorful Comments](https://marketplace.visualstudio.com/items?itemName=ParthR2031.colorful-comments) extension in VSCode.
+It highlights comments in color to help visually organize scripts and spot annotations quickly.
+
 ### ⚠️ Ollama Note
 
 This project uses the ollama Python package to interface with locally running language models. Please ensure that Ollama is installed on your device before using this feature—otherwise, the Python package will not function correctly.

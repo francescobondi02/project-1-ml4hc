@@ -1,3 +1,10 @@
+#########################################################################################################################
+# * Q4.2.2: LLM Embedding Regression
+# * This script loads the LLM embeddings from CSV files, trains a logistic regression model on the training set,
+# * evaluates it on the test set, and visualizes the embeddings using t-SNE.
+# * The embeddings are saved in CSV format, and the model's performance metrics (AuROC and AuPRC) are printed.
+#########################################################################################################################
+
 import numpy as np
 import pandas as pd
 from ollama import embed
@@ -6,12 +13,18 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 
+from project_1.config import PROCESSED_DATA_DIR
+
+#############################################################
+# ^ Utility Functions
+#############################################################
+
 
 # Function to load embeddings
 def load_embeddings(file_path):
     df = pd.read_csv(file_path)
-    X = df.drop(columns=['In-hospital_death']).values
-    y = df['In-hospital_death'].values
+    X = df.drop(columns=["In-hospital_death"]).values
+    y = df["In-hospital_death"].values
     return X, y
 
 
@@ -24,22 +37,32 @@ def train_and_evaluate(train_X, train_y, test_X, test_y):
     auprc = average_precision_score(test_y, probs)
     return probs, auroc, auprc
 
+
 def visualize_tsne(embeddings, labels, title="t-SNE of Embeddings"):
     tsne = TSNE(n_components=2, perplexity=30, random_state=42)
     emb_2d = tsne.fit_transform(embeddings)
 
-    plt.figure(figsize=(8,6))
-    scatter = plt.scatter(emb_2d[:,0], emb_2d[:,1], c=labels, cmap='coolwarm', alpha=0.7)
+    plt.figure(figsize=(8, 6))
+    scatter = plt.scatter(
+        emb_2d[:, 0], emb_2d[:, 1], c=labels, cmap="coolwarm", alpha=0.7
+    )
     plt.colorbar(scatter, label="In-hospital Death (0/1)")
     plt.title(title)
     plt.xlabel("TSNE-1")
     plt.ylabel("TSNE-2")
-    plt.savefig("llm_embeddings_tse_plot.png", bbox_inches='tight', dpi=300)  # Save as high-res PNG
+    plt.savefig(
+        "llm_embeddings_tse_plot.png", bbox_inches="tight", dpi=300
+    )  # Save as high-res PNG
     plt.show()
 
+
+#############################################################
+# ^ Main Code
+#############################################################
+
 # Load embeddings
-train_X, train_y = load_embeddings("embeddings_a.csv")
-test_X, test_y = load_embeddings("embeddings_c.csv")
+train_X, train_y = load_embeddings(PROCESSED_DATA_DIR / "set_a" / "embeddings_a.csv")
+test_X, test_y = load_embeddings(PROCESSED_DATA_DIR / "set_c" / "embeddings_c.csv")
 
 probs, auroc, auprc = train_and_evaluate(train_X, train_y, test_X, test_y)
 print(f"Test AuROC: {auroc:.4f}, Test AuPRC: {auprc:.4f}")

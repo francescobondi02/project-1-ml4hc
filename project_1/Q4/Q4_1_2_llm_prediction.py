@@ -1,3 +1,10 @@
+#########################################################################################################################
+# * Q4.1.2: LLM Prediction
+# * This script evaluates the performance of a large language model (LLM) in predicting in-hospital mortality risk based on ICU patient summaries.
+# * It uses the Ollama library to interact with the LLM and processes the model's output to extract predictions.
+# * The script also includes functions for generating few-shot examples, evaluating predictions, and calculating performance metrics.
+#########################################################################################################################
+
 import pandas as pd
 from ollama import chat
 from sklearn.metrics import roc_auc_score, average_precision_score
@@ -6,19 +13,26 @@ import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import product
 
-# Data Import
-summaries_a = pd.read_csv("summaries_a.csv")
-summaries_b = pd.read_csv("summaries_b.csv")
-summaries_c = pd.read_csv("summaries_c.csv")
+from project_1.config import PROJ_ROOT, DATA_DIRECTORY, PROCESSED_DATA_DIR, LOGS_DIR
+
+#########################################################################################################################
+# ^ Data Loading
+#########################################################################################################################
+
+summaries_a = pd.read_csv(PROCESSED_DATA_DIR / "set_a" / "summaries_a.csv")
+summaries_b = pd.read_csv(PROCESSED_DATA_DIR / "set_b" / "summaries_b.csv")
+summaries_c = pd.read_csv(PROCESSED_DATA_DIR / "set_c" / "summaries_c.csv")
 
 # Setting Running Parameters
 run_efficient = False
-#llm_model = 'deepseek-r1:7b'
-#llm_model = 'llama3.2:3b'
-llm_model = 'gemma2:9b'
-device_map = "cpu" # or "cuda"
+# llm_model = 'deepseek-r1:7b'
+# llm_model = 'llama3.2:3b'
+llm_model = "gemma2:9b"
+device_map = "cpu"  # or "cuda"
 
-#----------------------- SYSTEM PROMPTS ---------------------
+#################################################################################################################################
+# ^ System Prompts
+#################################################################################################################################
 
 system_prompt_binary = """You are a clinical risk prediction assistant designed to assess the likelihood of in-hospital mortality based on structured patient summaries derived from ICU time-series data. 
 
@@ -42,17 +56,20 @@ Your goal is to assess the patient's risk of in-hospital mortality on a scale fr
 Respond with a single integer between 1 and 10. Do not include explanations, context, or additional output. Return only the number.
 """
 
-#-------------------- OLLAMA PROCESSING -------------------------
+#################################################################################################################################
+# ^ Utility Functions
+#################################################################################################################################
+
 
 def clean_llm_output(text):
     """
     Cleans LLM output by removing <think> blocks and 'Answer:' prefix. (relevant for DeepSeek)
     """
     # Remove <think>...</think> block
-    text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE)
 
     # Remove 'Answer:' prefix (case-insensitive, any surrounding whitespace)
-    text = re.sub(r'(?i)\banswer\s*:\s*', '', text)
+    text = re.sub(r"(?i)\banswer\s*:\s*", "", text)
 
     # Strip leading/trailing whitespace
     return text.strip()
@@ -67,14 +84,14 @@ def extract_score_from_response(text, mode="score"):
     text = clean_llm_output(text)
 
     if mode == "score":
-        match = re.search(r'(\d+(\.\d+)?)', text)
+        match = re.search(r"(\d+(\.\d+)?)", text)
         if match:
             val = float(match.group(1))
             return min(max(val, 1.0), 10.0) / 10.0  # normalize 1-10 to 0-1
 
     else:  # binary mode
         # Try extracting a number first
-        match = re.search(r'(\d+(\.\d+)?)', text)
+        match = re.search(r"(\d+(\.\d+)?)", text)
         if match:
             val = float(match.group(1))
             # Normalize 0–100 or 1–10 range to 0–1 if needed
@@ -91,33 +108,53 @@ def extract_score_from_response(text, mode="score"):
 
     return 0.5  # fallback neutral
 
-# ---- Core inference function ---- #
+
+#############################################################################
+# ^ LLM Query Function
+#############################################################################
+
 
 def query_llm(summary_text, mode="score", few_shot_context=None):
     """
     Calls llm_model model via ollama.chat using user prompt.
     """
-    user_prompt = f"{few_shot_context}\n\n### Task \nInput:\n{summary_text}\nAnswer:" if few_shot_context else f"Input:\n{summary_text}\nAnswer:"
+    user_prompt = (
+        f"{few_shot_context}\n\n### Task \nInput:\n{summary_text}\nAnswer:"
+        if few_shot_context
+        else f"Input:\n{summary_text}\nAnswer:"
+    )
 
-    response = chat(model=llm_model, messages=[{
-        'role': 'system',
-        'content': system_prompt_score if mode == "score" else system_prompt_binary,
-    },
-        {
-            'role': 'user',
-            'content': user_prompt
-        }])
+    response = chat(
+        model=llm_model,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    system_prompt_score if mode == "score" else system_prompt_binary
+                ),
+            },
+            {"role": "user", "content": user_prompt},
+        ],
+    )
 
-    return response['message']['content']
+    return response["message"]["content"]
 
 
-# ---------------------------------- PROMPT CREATION AND RESULT EVALUATION ---------------
+###################################################################
+# ^ Few-shot example generation
+###################################################################
 
 
 # ---- Few-shot formatter ---- #
 
-def generate_few_shot_examples(df_train, text_col="summary_statistical", label_col="In-hospital_death", max_examples=3,
-                               mode="score"):
+
+def generate_few_shot_examples(
+    df_train,
+    text_col="summary_statistical",
+    label_col="In-hospital_death",
+    max_examples=3,
+    mode="score",
+):
     """
     Creates few-shot context examples from labeled training set.
     """
@@ -129,10 +166,19 @@ def generate_few_shot_examples(df_train, text_col="summary_statistical", label_c
         formatted += f"Input:\n{row[text_col]}\nAnswer: {label_text}\n\n"
     return formatted.strip()
 
+
 # ---- Full evaluation runner ---- #
 
-def evaluate_llm_predictions(summary_df, text_col='summary_statistical', label_col="In-hospital_death",
-                             mode="score", few_shot=False, df_train_for_examples=None, max_workers=4):
+
+def evaluate_llm_predictions(
+    summary_df,
+    text_col="summary_statistical",
+    label_col="In-hospital_death",
+    mode="score",
+    few_shot=False,
+    df_train_for_examples=None,
+    max_workers=4,
+):
     """
     Runs inference across all rows in summary_df using parallel threads.
     """
@@ -172,30 +218,35 @@ def evaluate_llm_predictions(summary_df, text_col='summary_statistical', label_c
         "predictions": predictions,
         "true_labels": labels,
         "auroc": auroc,
-        "auprc": auprc
+        "auprc": auprc,
     }
 
-# --------------------------- EXECUTION -----------------
 
-summaries_c_small = summaries_c.sample(100, random_state = 1)
-summary_cols = ['summary_statistical', 'summary_trend']
-prompt_modes = ['few-shot', 'zero-shot']
-score_modes = ['binary', 'score']
+###################################################################
+# ^ Main Evaluation Loop
+###################################################################
+
+summaries_c_small = summaries_c.sample(100, random_state=1)
+summary_cols = ["summary_statistical", "summary_trend"]
+prompt_modes = ["few-shot", "zero-shot"]
+score_modes = ["binary", "score"]
 
 # Loop through all combinations
-for summary_col, prompt_mode, score_mode in product(summary_cols, prompt_modes, score_modes):
+for summary_col, prompt_mode, score_mode in product(
+    summary_cols, prompt_modes, score_modes
+):
     kwargs = {
-        'summary_df': summaries_c_small if run_efficient else summaries_c,
-        'text_col': summary_col,
-        'mode': score_mode,
+        "summary_df": summaries_c_small if run_efficient else summaries_c,
+        "text_col": summary_col,
+        "mode": score_mode,
     }
 
     label = f"{prompt_mode.title()} | {summary_col} | {score_mode}"
 
     # Add few-shot parameters if needed
-    if prompt_mode == 'few-shot':
-        kwargs['few_shot'] = True
-        kwargs['df_train_for_examples'] = summaries_a
+    if prompt_mode == "few-shot":
+        kwargs["few_shot"] = True
+        kwargs["df_train_for_examples"] = summaries_a
 
     results = evaluate_llm_predictions(**kwargs)
     print(f"{label} → AUROC: {results['auroc']:.3f}, AUPRC: {results['auprc']:.3f}")

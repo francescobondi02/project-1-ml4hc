@@ -1,3 +1,9 @@
+#########################################################################################################################
+# * Q4.3: Embedding Regression
+# * This script loads the embeddings from CSV files, converts them using Chronos,
+# * trains a logistic regression model on the training set and evaluates it on the test set.
+#########################################################################################################################
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -9,8 +15,14 @@ import pandas as pd
 import torch
 from chronos import ChronosPipeline
 
+from project_1.config import PROCESSED_DATA_DIR
+from project_1.loading import load_before_scaling, load_outcomes
 
-# --------------------------------- NAIVE EMBEDDING GENERATION ----------------------
+
+#################################################################
+# ^ Naive Embedding Generation
+#################################################################
+
 
 def get_univariate_embedding(pipeline, single_var_series):
     """
@@ -24,7 +36,9 @@ def get_univariate_embedding(pipeline, single_var_series):
     with torch.no_grad():
         embedding, _ = pipeline.embed(series_tensor)
 
-    if embedding.ndim == 3:  # bc of batch logic it returns embedding as torch.Size([1, 49, 512])
+    if (
+        embedding.ndim == 3
+    ):  # bc of batch logic it returns embedding as torch.Size([1, 49, 512])
         embedding = embedding.squeeze(0)
     return embedding.mean(dim=0)  # Average pooling
 
@@ -83,15 +97,18 @@ def build_patient_embeddings_naive(pipeline, df_timeseries, df_labels, variables
         X_list.append(emb.cpu().numpy())
 
         # Lookup label
-        label_row = df_labels[df_labels['RecordID'] == rid]
+        label_row = df_labels[df_labels["RecordID"] == rid]
         if not label_row.empty:
-            y_list.append(label_row['In-hospital_death'].values[0])
+            y_list.append(label_row["In-hospital_death"].values[0])
         else:
             continue  # skip if label missing
 
     return np.vstack(X_list), np.array(y_list)
 
-# ------------------------------- SIMPLE NEURAL AGGREGATOR APPROACH ------------------------
+
+##################################################################
+# ^ Simple Neural Aggregator Approach
+##################################################################
 
 
 class ChannelAggregator(nn.Module):
@@ -101,7 +118,7 @@ class ChannelAggregator(nn.Module):
             nn.Flatten(),
             nn.Linear(embed_dim * num_vars, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, out_dim)
+            nn.Linear(hidden_dim, out_dim),
         )
 
     def forward(self, x):
@@ -131,8 +148,16 @@ def build_multivar_embeddings(pipeline, patient_df, variables):
     return torch.cat(embeddings, dim=0)  # [num_vars, D]
 
 
-def train_aggregator(pipeline, aggregator, df_timeseries, df_labels, variables, epochs=5, lr=1e-3,
-                     device='cpu'):
+def train_aggregator(
+    pipeline,
+    aggregator,
+    df_timeseries,
+    df_labels,
+    variables,
+    epochs=5,
+    lr=1e-3,
+    device="cpu",
+):
     aggregator.to(device)
     optimizer = torch.optim.Adam(aggregator.parameters(), lr=lr)
     criterion = nn.BCEWithLogitsLoss()
@@ -152,7 +177,9 @@ def train_aggregator(pipeline, aggregator, df_timeseries, df_labels, variables, 
         y_list.append(label)
 
     X_tensor = torch.cat(X_list, dim=0).float().to(device)  # [batch, num_vars, D]
-    y_tensor = torch.tensor(y_list, dtype=torch.float32).unsqueeze(-1).to(device)  # [batch, 1]
+    y_tensor = (
+        torch.tensor(y_list, dtype=torch.float32).unsqueeze(-1).to(device)
+    )  # [batch, 1]
 
     for epoch in range(epochs):
         aggregator.train()
@@ -166,7 +193,9 @@ def train_aggregator(pipeline, aggregator, df_timeseries, df_labels, variables, 
     return aggregator
 
 
-def evaluate_aggregator(pipeline, aggregator, df_timeseries, df_labels, variables, device='cpu'):
+def evaluate_aggregator(
+    pipeline, aggregator, df_timeseries, df_labels, variables, device="cpu"
+):
     aggregator.eval()
     all_logits = []
     all_labels = []
@@ -194,25 +223,64 @@ def evaluate_aggregator(pipeline, aggregator, df_timeseries, df_labels, variable
     auprc = average_precision_score(all_labels, probs)
     return auroc, auprc
 
-if __name__ == '__main__':
+
+##################################################################
+# ^ Main Function
+##################################################################
+
+if __name__ == "__main__":
 
     # ----------------------------- IMPORT AND RUNNING PARAMETERS ------------------
 
     run_efficient = False
 
-    df_a = pd.read_csv("df_a.csv")
-    df_c = pd.read_csv("df_c.csv")
-    death_a = pd.read_csv("death_a.csv")  # columns: RecordID, In-hospital_death
-    death_c = pd.read_csv("death_c.csv")
+    df_a, df_b, df_c = load_before_scaling()
+    death_a, death_b, death_c = load_outcomes()
 
     device_map = "cuda" if torch.cuda.is_available() else "cpu"
 
-    list_of_variables = ['Gender', 'Height', 'Weight', 'Age', 'Albumin',
-                         'Cholesterol', 'DiasABP', 'HCO3', 'HCT', 'HR', 'Mg', 'MAP', 'Na',
-                         'NIDiasABP', 'NIMAP', 'NISysABP', 'SysABP', 'PaCO2', 'PaO2',
-                         'Platelets', 'RespRate', 'Temp', 'ALP', 'ALT', 'AST', 'BUN',
-                         'Bilirubin', 'Creatinine', 'FiO2', 'GCS', 'Glucose', 'K', 'Lactate',
-                         'MechVent', 'Urine', 'WBC', 'pH', 'SaO2', 'TroponinT', 'TroponinI']
+    list_of_variables = [
+        "Gender",
+        "Height",
+        "Weight",
+        "Age",
+        "Albumin",
+        "Cholesterol",
+        "DiasABP",
+        "HCO3",
+        "HCT",
+        "HR",
+        "Mg",
+        "MAP",
+        "Na",
+        "NIDiasABP",
+        "NIMAP",
+        "NISysABP",
+        "SysABP",
+        "PaCO2",
+        "PaO2",
+        "Platelets",
+        "RespRate",
+        "Temp",
+        "ALP",
+        "ALT",
+        "AST",
+        "BUN",
+        "Bilirubin",
+        "Creatinine",
+        "FiO2",
+        "GCS",
+        "Glucose",
+        "K",
+        "Lactate",
+        "MechVent",
+        "Urine",
+        "WBC",
+        "pH",
+        "SaO2",
+        "TroponinT",
+        "TroponinI",
+    ]
 
     pipeline = ChronosPipeline.from_pretrained(
         "amazon/chronos-t5-small",
@@ -220,17 +288,25 @@ if __name__ == '__main__':
         torch_dtype=torch.float32,
     )
 
-    df_a_small = df_a.sample(100, random_state = 1)
-    df_c_small = df_c.sample(100, random_state = 1)
+    df_a_small = df_a.sample(100, random_state=1)
+    df_c_small = df_c.sample(100, random_state=1)
 
     # ----------------------------- 1) NAIVE APPROACH ---------------------------------
 
     if run_efficient:
-        train_X, train_y = build_patient_embeddings_naive(pipeline, df_a_small, death_a, list_of_variables)
-        test_X, test_y = build_patient_embeddings_naive(pipeline, df_c_small, death_c, list_of_variables)
+        train_X, train_y = build_patient_embeddings_naive(
+            pipeline, df_a_small, death_a, list_of_variables
+        )
+        test_X, test_y = build_patient_embeddings_naive(
+            pipeline, df_c_small, death_c, list_of_variables
+        )
     else:
-        train_X, train_y = build_patient_embeddings_naive(pipeline, df_a, death_a, list_of_variables)
-        test_X, test_y = build_patient_embeddings_naive(pipeline, df_c, death_c, list_of_variables)
+        train_X, train_y = build_patient_embeddings_naive(
+            pipeline, df_a, death_a, list_of_variables
+        )
+        test_X, test_y = build_patient_embeddings_naive(
+            pipeline, df_c, death_c, list_of_variables
+        )
 
     clf = LogisticRegression(max_iter=2000)
     clf.fit(train_X, train_y)
@@ -239,10 +315,11 @@ if __name__ == '__main__':
     auprc = average_precision_score(test_y, probs)
     print(f"[Naive Aggregation] AuROC={auroc:.4f}, AuPRC={auprc:.4f}")
 
-
     # ------------------------ 2) MLP APPROACH ----------------------------------------
 
-    aggregator = ChannelAggregator(num_vars=len(list_of_variables), embed_dim=512, hidden_dim=64, out_dim=1)
+    aggregator = ChannelAggregator(
+        num_vars=len(list_of_variables), embed_dim=512, hidden_dim=64, out_dim=1
+    )
 
     # Train
     aggregator = train_aggregator(
@@ -253,7 +330,7 @@ if __name__ == '__main__':
         variables=list_of_variables,
         epochs=5,
         lr=1e-3,
-        device=device_map
+        device=device_map,
     )
 
     # Evaluate
@@ -263,7 +340,7 @@ if __name__ == '__main__':
         df_timeseries=df_c_small if run_efficient else df_c,
         df_labels=death_c,
         variables=list_of_variables,
-        device=device_map
+        device=device_map,
     )
 
     print(f"[Neural Aggregator] AuROC={auroc:.4f}, AuPRC={auprc:.4f}")

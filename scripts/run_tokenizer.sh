@@ -11,4 +11,4 @@ module load stack/2024-06 python_cuda/3.9.18 # Load Python module (check availab
 #cd /path/to/script/folder                # Change directory to where your Python script is
 export PYTHONPATH=${PYTHONPATH}:$(pwd)
 
-python project_1/Q2/tokenizer.py                        # Run the Python script
+python project_1/Q2/Q2_3_tokenizing_TZV.py                        # Run the Python script
