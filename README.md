@@ -138,6 +138,14 @@ Dive into self-supervised learning and contrastive representation learning in:
 
 ### 🧠 Q4: Foundation Models
 
-Analyze foundation model performance and transfer learning setups in:
+The foundation model experiments are organized by subquestion and implemented as Python scripts in:
 
-📓 `notebooks/4_Q4_foundation_models.ipynb`
+📁 `project_1/Q4/`
+
+The available scripts are:
+
+- `Q4_1_1_generate_summaries.py`
+- `Q4_1_2_llm_prediction.py`
+- `Q4_2_1_embedding_generation.py`
+- `Q4_2_2_embedding_regression.py`
+- `Q4_3_chronos_embedding_regression.py`
