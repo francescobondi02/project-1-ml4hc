@@ -149,3 +149,9 @@ The available scripts are:
 - `Q4_2_1_embedding_generation.py`
 - `Q4_2_2_embedding_regression.py`
 - `Q4_3_chronos_embedding_regression.py`
+
+The scripts for Q4_1 and Q4_2 need to be executed in the shown order to work. Furthermore, there are bash scripts to run `Q4_1_2_llm_prediction.py`, `Q4_2_1_embedding_generation.py` and `Q4_3_chronos_embedding_regression.py` on the student cluster in:
+
+📁 `scripts/`
+
+Notice, that `run_Q4_3_chronos_embedding_regression.sh` uses an own virtual environment, that can be created out of requirements.txt. 
