@@ -9,7 +9,6 @@ ollama
 numpy
 pandas
 scikit-learn
-bigdl-chronos
 tsfresh
 umap-learn
-git+https://github.com/amazon-science/chronos-forecasting.git
+chronos-forecasting
