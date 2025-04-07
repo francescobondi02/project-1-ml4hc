@@ -22,7 +22,7 @@ def get_embedding_ollama(text: str, model_name):
     Calls the Ollama embedding API for a given string.
     """
     response = embed(model=model_name, input=text)
-    return np.array(response.get("embeddings", []), dtype=float)
+    return np.array(response.get("embeddings", [])[0], dtype=float)
 
 
 def build_embeddings(df, summary_col="summary_trend", model_name="gemma2:9b"):
