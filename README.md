@@ -106,7 +106,13 @@ This project is organized into four main questions (Q1–Q4), each addressing a 
    data/data_1/
    ```
 
-3. Run the preprocessing script to clean and process the raw data:
+3. Create the following directory if it does not exist yet (used for saving the cleaned data):
+
+   ```
+   mkdir -p data/processed/
+   ```
+
+4. Run the preprocessing script to clean and process the raw data:
 
    ```
    bash scripts/run_Q1_data_processing.sh
@@ -154,4 +160,4 @@ The scripts for Q4_1 and Q4_2 need to be executed in the shown order to work. Fu
 
 📁 `scripts/`
 
-Notice, that `run_Q4_3_chronos_embedding_regression.sh` uses an own virtual environment, that can be created out of requirements.txt. 
+Notice, that `run_Q4_3_chronos_embedding_regression.sh` uses an own virtual environment, that can be created out of requirements.txt.
