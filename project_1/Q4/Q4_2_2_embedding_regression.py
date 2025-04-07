@@ -67,4 +67,4 @@ test_X, test_y = load_embeddings(PROCESSED_DATA_DIR / "set_c" / "embeddings_c.cs
 probs, auroc, auprc = train_and_evaluate(train_X, train_y, test_X, test_y)
 print(f"Test AuROC: {auroc:.4f}, Test AuPRC: {auprc:.4f}")
 
-visualize_tsne(test_X, test_y, title=f"t-SNE Embeddings (Test Set)")
+visualize_tsne(test_X, test_y, title=f"t-SNE LLM Embeddings")
